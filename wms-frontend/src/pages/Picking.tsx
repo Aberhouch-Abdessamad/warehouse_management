@@ -220,7 +220,7 @@ export default function Picking() {
                           value={pickedQty[item.id] ?? '0'}
                           onChange={(e) => setPickedQty({ ...pickedQty, [item.id]: e.target.value })}
                           disabled={isDone}
-                          className="w-20 border border-border rounded-lg px-2 py-1.5 text-sm text-ink text-right focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none"
+                          className="w-20 border border-border rounded-lg px-2 py-1.5 text-sm text-ink text-right focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none"
                         />
                       </div>
                     </div>

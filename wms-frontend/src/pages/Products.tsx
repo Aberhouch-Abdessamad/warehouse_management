@@ -182,7 +182,7 @@ export default function Products() {
               const low = available <= reorder
               return (
                 <tr key={p.id} className="hover:bg-surface-subtle/60 transition">
-                  <td className="px-4 py-2.5 pl-5 font-mono text-xs text-blue font-semibold whitespace-nowrap">{p.sku}</td>
+                  <td className="px-4 py-2.5 pl-5 font-mono text-xs text-brand font-semibold whitespace-nowrap">{p.sku}</td>
                   <td className="px-4 py-2.5">
                     <p className="font-medium text-ink">{p.name}</p>
                     <p className="text-[11px] text-ink-muted">{p.brand?.name ?? '—'} · {p.unit?.name ?? 'unit'}</p>
@@ -233,7 +233,7 @@ export default function Products() {
           <label className="block">
             <span className="block text-xs font-semibold text-ink-muted mb-1.5">Description</span>
             <textarea value={form.description} onChange={(e) => f('description')(e.target.value)} rows={2}
-              className="w-full border border-border rounded-lg px-3.5 py-2.5 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none" />
+              className="w-full border border-border rounded-lg px-3.5 py-2.5 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none" />
           </label>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>

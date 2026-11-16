@@ -37,13 +37,13 @@ export default function BarcodeInput({
           placeholder={placeholder}
           disabled={disabled}
           autoFocus={autoFocus}
-          className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none placeholder:text-ink-muted/60 uppercase"
+          className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none placeholder:text-ink-muted/60 uppercase"
         />
       </div>
       <button
         type="submit"
         disabled={disabled}
-        className="px-4 py-2 rounded-lg bg-blue text-white text-sm font-medium hover:bg-blue/90 disabled:opacity-50"
+        className="px-4 py-2 rounded-xl bg-gradient-to-b from-[#8E7CF0] to-[#6A55CF] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.25),0_3px_0_#4B39A8,0_8px_16px_-8px_rgba(106,85,207,.6)] hover:brightness-105 active:translate-y-[3px] active:shadow-none text-sm font-semibold transition-all duration-100 disabled:opacity-50"
       >
         Scan
       </button>

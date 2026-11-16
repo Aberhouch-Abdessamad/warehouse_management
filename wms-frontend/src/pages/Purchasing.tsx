@@ -114,7 +114,7 @@ export default function Purchasing() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none transition"
+              className="border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none transition"
             >
               <option value="">All statuses</option>
               {['draft', 'submitted', 'approved', 'partially_received', 'received', 'cancelled'].map((s) => (
@@ -141,7 +141,7 @@ export default function Purchasing() {
           {items.map((item, i) => (
             <div key={i} className="flex gap-2">
               <select value={item.product_id}
-                className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none"
+                className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none"
                 onChange={(e) => {
                   const c = [...items]; c[i] = { ...c[i], product_id: e.target.value }; setItems(c)
                 }}>
@@ -149,7 +149,7 @@ export default function Purchasing() {
                 {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <input type="number" min="0.001" step="0.001" value={item.quantity}
-                className="w-24 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none"
+                className="w-24 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none"
                 onChange={(e) => {
                   const c = [...items]; c[i] = { ...c[i], quantity: e.target.value }; setItems(c)
                 }} />
@@ -181,7 +181,7 @@ export default function Purchasing() {
           <Table headers={['PO #', 'Supplier', 'Warehouse', 'Total', 'Status', 'Actions']}>
             {orders.map((po) => (
               <tr key={po.id} className="hover:bg-surface-subtle/60 transition">
-                <td className="px-4 py-3 font-mono text-xs font-semibold text-blue">{po.number}</td>
+                <td className="px-4 py-3 font-mono text-xs font-semibold text-brand">{po.number}</td>
                 <td className="px-4 py-3 font-medium text-ink">{po.supplier?.name || '—'}</td>
                 <td className="px-4 py-3 text-ink-muted">{po.warehouse?.name || '—'}</td>
                 <td className="px-4 py-3 font-mono text-sm text-ink tabular-nums">${Number(po.total || 0).toFixed(2)}</td>

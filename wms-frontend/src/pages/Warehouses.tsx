@@ -96,7 +96,7 @@ export default function Warehouses() {
               type="checkbox"
               checked={form.allow_self_transfer}
               onChange={(e) => setForm({ ...form, allow_self_transfer: e.target.checked })}
-              className="w-4 h-4 rounded border-border accent-blue"
+              className="w-4 h-4 rounded border-border accent-brand"
             />
             Allow self-transfer
           </label>
@@ -124,7 +124,7 @@ export default function Warehouses() {
                 <td className="px-4 py-3 text-ink-muted">{w.country || '—'}</td>
                 <td className="px-4 py-3 text-ink-muted">{w.phone || '—'}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${w.allow_self_transfer ? 'bg-blue-soft text-blue' : 'bg-surface-subtle text-ink-muted'}`}>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${w.allow_self_transfer ? 'bg-brand-soft text-brand' : 'bg-surface-subtle text-ink-muted'}`}>
                     {w.allow_self_transfer ? 'Allowed' : 'Blocked'}
                   </span>
                 </td>

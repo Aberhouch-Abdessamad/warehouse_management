@@ -48,7 +48,7 @@ export default function ConfirmationDialog({
         <div className={`flex items-start gap-3 px-6 pt-6 pb-4 ${variant === 'danger' ? 'bg-red-soft/50' : ''}`}>
           <div
             className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-              variant === 'danger' ? 'bg-red-soft text-red' : 'bg-blue-soft text-blue'
+              variant === 'danger' ? 'bg-red-soft text-red' : 'bg-brand-soft text-brand'
             }`}
           >
             {variant === 'danger' ? <AlertTriangle size={20} /> : <Info size={20} />}

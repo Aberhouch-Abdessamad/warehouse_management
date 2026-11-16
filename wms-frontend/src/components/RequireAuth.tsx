@@ -15,13 +15,13 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#F5F7FB',
+        background: '#F1F4F6',
       }}>
         <div style={{
           width: 40,
           height: 40,
-          border: '3px solid #cbd5e1',
-          borderTopColor: '#0F2747',
+          border: '3px solid #DCE3E8',
+          borderTopColor: '#0F766E',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
         }} />
@@ -43,7 +43,7 @@ export function RequirePermission({ permission, children }: { permission: string
       <div className="w-12 h-12 mx-auto rounded-xl bg-amber-soft text-amber flex items-center justify-center mb-3"><ShieldAlert size={22} /></div>
       <h1 className="text-lg font-bold text-ink">Access restricted</h1>
       <p className="text-sm text-ink-muted mt-1">Your role does not include access to this area. Ask an administrator if you need it.</p>
-      <Link to="/dashboard" className="inline-block mt-4 text-sm font-semibold text-blue hover:underline">Back to dashboard</Link>
+      <Link to="/dashboard" className="inline-block mt-4 text-sm font-semibold text-brand hover:underline">Back to dashboard</Link>
     </div>
   )
 }

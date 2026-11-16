@@ -142,7 +142,7 @@ export default function Receiving() {
                       step="0.001"
                       value={receiveQtys[item.id] ?? ''}
                       onChange={(e) => setReceiveQtys({ ...receiveQtys, [item.id]: e.target.value })}
-                      className="w-28 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none"
+                      className="w-28 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none"
                       placeholder="Qty"
                     />
                   </div>

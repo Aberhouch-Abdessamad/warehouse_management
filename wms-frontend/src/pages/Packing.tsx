@@ -172,7 +172,7 @@ export default function Packing() {
                   <button
                     key={so.id}
                     onClick={() => selectOrder(so)}
-                    className="w-full flex items-center justify-between border border-border rounded-lg px-4 py-3 text-left hover:border-blue hover:bg-blue/5 transition"
+                    className="w-full flex items-center justify-between border border-border rounded-lg px-4 py-3 text-left hover:border-brand hover:bg-brand/5 transition"
                   >
                     <div>
                       <p className="text-sm font-semibold text-ink">{so.number}</p>

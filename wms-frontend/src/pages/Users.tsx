@@ -223,7 +223,7 @@ export default function Users() {
                   id="is_active"
                   checked={form.is_active}
                   onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                  className="w-4 h-4 rounded border-border text-blue focus:ring-blue/40"
+                  className="w-4 h-4 rounded border-border text-brand focus:ring-brand/40"
                 />
                 <label htmlFor="is_active" className="text-sm text-ink">Active</label>
               </div>

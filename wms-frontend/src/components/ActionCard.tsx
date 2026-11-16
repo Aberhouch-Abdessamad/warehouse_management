@@ -242,7 +242,7 @@ export default function ActionCard({ action, state = null, result = null, onReso
         <div className="flex items-center gap-2 px-3 pb-2.5">
           <button onClick={confirm}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-[11.5px] font-medium hover:opacity-90 transition ${
-              danger ? 'bg-red' : 'bg-gradient-to-br from-violet to-blue'
+              danger ? 'bg-red' : 'bg-gradient-to-br from-[#8E7CF0] to-violet'
             }`}>
             <Check size={13} /> Confirm
           </button>

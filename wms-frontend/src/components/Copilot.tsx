@@ -247,7 +247,7 @@ export function ChatView({ compact = false, onExpand, onClose }: { compact?: boo
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet to-blue text-white flex items-center justify-center">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8E7CF0] to-violet text-white flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_2px_0_#4B39A8]">
           <Sparkles size={16} />
         </div>
         <div className="flex-1 min-w-0">
@@ -299,7 +299,7 @@ export function ChatView({ compact = false, onExpand, onClose }: { compact?: boo
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[13px] ${
               m.role === 'user'
-                ? 'bg-blue text-white rounded-br-md'
+                ? 'bg-brand text-white rounded-br-md'
                 : m.error
                   ? 'bg-red-soft text-red border border-red/20 rounded-bl-md'
                   : 'bg-surface text-ink border border-border rounded-bl-md shadow-panel'
@@ -345,10 +345,10 @@ export function ChatView({ compact = false, onExpand, onClose }: { compact?: boo
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
             rows={1}
             placeholder="Ask Copilot… (Shift+Enter for new line)"
-            className="flex-1 resize-none max-h-32 border border-border rounded-lg px-3 py-2.5 text-sm text-ink bg-surface focus:ring-2 focus:ring-violet/30 focus:border-violet outline-none"
+            className="flex-1 resize-none max-h-32 border border-border rounded-xl px-3 py-2.5 text-sm text-ink bg-surface-raised shadow-well focus:bg-surface focus:ring-2 focus:ring-violet/30 focus:border-violet outline-none"
           />
           <button onClick={submit} disabled={sending || (!text.trim() && !image)}
-            className="p-2.5 rounded-lg bg-gradient-to-br from-violet to-blue text-white disabled:opacity-40 transition" aria-label="Send">
+            className="p-2.5 rounded-xl bg-gradient-to-b from-[#8E7CF0] to-violet text-white shadow-[inset_0_1px_0_rgba(255,255,255,.25),0_3px_0_#4B39A8] active:translate-y-[3px] active:shadow-none disabled:opacity-40 transition-all duration-100" aria-label="Send">
             <Send size={16} />
           </button>
         </div>
@@ -363,7 +363,7 @@ export function CopilotPanel({ onExpand }: { onExpand: () => void }) {
   if (!open) return null
   return (
     <>
-      <div className="fixed inset-0 bg-ink/20 z-40 lg:hidden" onClick={() => setOpen(false)} />
+      <div className="fixed inset-0 bg-graphite/30 z-40 lg:hidden" onClick={() => setOpen(false)} />
       <aside className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[420px] bg-surface border-l border-border shadow-popover flex flex-col animate-slide-right">
         <ChatView compact onClose={() => setOpen(false)} onExpand={() => { setOpen(false); onExpand() }} />
       </aside>

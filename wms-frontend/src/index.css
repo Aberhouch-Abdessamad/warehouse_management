@@ -5,15 +5,75 @@
 html, body, #root {
   height: 100%;
   font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  color: #142028;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+body {
+  background-color: #F1F4F6;
+  -webkit-font-smoothing: antialiased;
 }
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C5D0D7; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #9AA9B3; background-clip: padding-box; border: 2px solid transparent; }
+
+::selection { background: rgb(15 118 110 / 0.2); }
+
+@layer components {
+  /* Soft app background */
+  .floor-bg {
+    background-color: #F1F4F6;
+    background-image: linear-gradient(180deg, #F7F9FA 0%, #F1F4F6 320px);
+    background-attachment: fixed;
+  }
+
+  /* Physical 3D panel — white slab with a visible bottom edge */
+  .panel-3d {
+    background-color: #FFFFFF;
+    border: 1px solid #DCE3E8;
+    border-radius: 1rem;
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 1px 2px 0 rgb(29 35 44 / 0.06), 0 3px 0 -1px #CDD6DC, 0 14px 28px -14px rgb(29 35 44 / 0.28);
+  }
+  .lift-3d {
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .2s ease;
+  }
+  .lift-3d:hover {
+    transform: translateY(-3px);
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 2px 4px 0 rgb(29 35 44 / 0.06), 0 5px 0 -1px #CDD6DC, 0 26px 40px -18px rgb(29 35 44 / 0.38);
+  }
+
+  /* Pointer-driven 3D tilt; JS sets --rx / --ry */
+  .tilt-3d {
+    transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(0);
+    transform-style: preserve-3d;
+    transition: transform .18s ease-out, box-shadow .25s ease;
+    will-change: transform;
+  }
+  .tilt-3d .pop-z { transform: translateZ(28px); }
+  .tilt-3d .pop-z-sm { transform: translateZ(14px); }
+
+  /* 3D cube icon tile (icon chip that looks like an extruded block) */
+  .cube-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    color: #FFFFFF;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -2px 0 rgb(0 0 0 / 0.12), 0 3px 0 0 var(--chip-edge, #0A4F4A), 0 8px 14px -6px var(--chip-glow, rgb(15 118 110 / 0.55));
+  }
+
+  /* Recessed well (inputs, tracks) */
+  .well {
+    background-color: #EEF2F4;
+    box-shadow: inset 0 2px 3px 0 rgb(29 35 44 / 0.07), inset 0 0 0 1px rgb(29 35 44 / 0.04);
+  }
+
+  /* Dark graphite surfaces */
+  .graphite-bg {
+    background: linear-gradient(180deg, #1C3341 0%, #152733 100%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -25,4 +85,5 @@ html, body, #root {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .tilt-3d { transform: none !important; }
 }

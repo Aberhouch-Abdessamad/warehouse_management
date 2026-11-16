@@ -59,7 +59,7 @@ export default function Settings() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${tab === t ? 'border-blue text-blue' : 'border-transparent text-ink-muted hover:text-ink'}`}
+            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${tab === t ? 'border-brand text-brand' : 'border-transparent text-ink-muted hover:text-ink'}`}
           >
             {t === 'users' ? 'Users' : 'Roles'}
           </button>

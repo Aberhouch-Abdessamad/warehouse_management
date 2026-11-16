@@ -193,7 +193,7 @@ export default function StockCountPage() {
                 placeholder="Search by number…"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); load(1, e.target.value) }}
-                className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none transition placeholder:text-ink-muted/50"
+                className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none transition placeholder:text-ink-muted/50"
               />
             </div>
             <Button onClick={() => setShowForm(true)}><Plus size={16} /> New Count</Button>
@@ -328,7 +328,7 @@ export default function StockCountPage() {
                         value={recordForm[item.id] ?? ''}
                         onChange={(e) => setRecordForm({ ...recordForm, [item.id]: e.target.value })}
                         placeholder="—"
-                        className="w-24 border border-border rounded-lg px-2.5 py-1.5 text-sm text-ink focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none transition tabular-nums"
+                        className="w-24 border border-border rounded-lg px-2.5 py-1.5 text-sm text-ink focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none transition tabular-nums"
                       />
                     ) : (
                       <span className="tabular-nums">{item.counted_quantity ?? '—'}</span>

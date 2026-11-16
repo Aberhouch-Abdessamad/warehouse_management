@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { get } from '../services/apiClient'
 import { CopilotPanel, CopilotProvider, useCopilot } from './Copilot'
+import { IsoCube } from './ui'
 
 interface NavItem { to: string; label: string; icon: ReactNode; permission?: string | string[] }
 interface NavSection { label: string; items: NavItem[] }
@@ -97,16 +98,16 @@ function GlobalSearch() {
         }}
         placeholder="Scan barcode or search SKU / product…"
         aria-label="Search products"
-        className="w-full bg-surface-subtle border border-transparent rounded-lg pl-9 pr-14 py-2 text-[13px] text-ink placeholder:text-ink-subtle focus:bg-surface focus:border-blue focus:ring-2 focus:ring-blue/20 outline-none transition"
+        className="w-full bg-surface-subtle shadow-well border border-transparent rounded-xl pl-9 pr-14 py-2.5 text-[13px] text-ink placeholder:text-ink-subtle focus:bg-surface focus:border-brand focus:shadow-glow outline-none transition"
       />
-      <kbd className="hidden md:block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-ink-subtle border border-border rounded px-1.5 py-0.5 bg-surface">Ctrl K</kbd>
+      <kbd className="hidden md:block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-ink-muted border border-border rounded-md px-1.5 py-0.5 bg-surface shadow-[0_2px_0_#CDD6DC]">Ctrl K</kbd>
       {open && results.length > 0 && (
-        <div className="absolute top-full mt-1.5 left-0 right-0 bg-surface border border-border rounded-xl shadow-popover overflow-hidden z-50">
+        <div className="absolute top-full mt-2 left-0 right-0 bg-surface border border-border rounded-2xl shadow-popover overflow-hidden z-50 animate-slide-up">
           {results.map((r) => (
             <button key={r.id} onMouseDown={() => go(r.sku)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-subtle">
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-brand-soft/60">
               <ScanBarcode size={14} className="text-ink-subtle" />
-              <span className="font-mono text-xs text-blue font-semibold">{r.sku}</span>
+              <span className="font-mono text-xs text-brand font-semibold">{r.sku}</span>
               <span className="text-sm text-ink truncate">{r.name}</span>
             </button>
           ))}
@@ -142,19 +143,19 @@ function Shell() {
   const initials = (user?.name ?? '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 
   return (
-    <div className="flex h-screen bg-canvas">
+    <div className="flex h-screen floor-bg">
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'} w-64 bg-[#0B1B33] text-white flex flex-col transition-all duration-200 ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'} w-64 graphite-bg text-white flex flex-col transition-all duration-200 shadow-[6px_0_24px_-12px_rgba(0,0,0,.5)] ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         <div className="flex items-center gap-2.5 px-4 h-16 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue to-mint flex items-center justify-center shadow-lg shadow-blue/30 shrink-0">
-            <Warehouse size={18} />
+          <div className="w-10 h-10 shrink-0 drop-shadow-[0_6px_8px_rgba(0,0,0,.35)]">
+            <IsoCube size={40} />
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="font-bold text-[15px] leading-tight tracking-tight">Banknbox WMS</p>
+              <p className="font-display font-bold text-[16px] leading-tight tracking-tight">Banknbox <span className="text-brand-light">WMS</span></p>
               <p className="text-[10px] text-white/45 leading-tight font-semibold tracking-[0.14em]">WAREHOUSE OS</p>
             </div>
           )}
@@ -163,7 +164,7 @@ function Shell() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-4">
+        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
           {visibleSections.map((section) => (
             <div key={section.label}>
               {!collapsed && (
@@ -178,17 +179,17 @@ function Shell() {
                     onClick={() => setSidebarOpen(false)}
                     className={({ isActive }) =>
                       `group relative flex items-center gap-3 ${collapsed ? 'lg:justify-center' : ''} px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all ${
-                        isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/[0.06] hover:text-white'
+                        isActive ? 'bg-brand text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15),0_2px_0_#0A4F4A]' : 'text-white/60 hover:bg-white/[0.06] hover:text-white'
                       }`
                     }
                   >
                     {({ isActive }) => (
                       <>
-                        {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-gradient-to-b from-blue to-mint" />}
-                        <span className={isActive ? 'text-mint' : 'text-white/45 group-hover:text-white/90'}>{item.icon}</span>
+                        
+                        <span className={isActive ? 'text-white' : 'text-white/45 group-hover:text-white/90'}>{item.icon}</span>
                         <span className={collapsed ? 'lg:hidden' : ''}>{item.label}</span>
                         {item.to === '/assistant' && !collapsed && (
-                          <span className="ml-auto text-[9px] font-bold tracking-wider bg-violet/80 text-white px-1.5 py-0.5 rounded">AI</span>
+                          <span className="ml-auto text-[9px] font-bold tracking-wider bg-violet text-white px-1.5 py-0.5 rounded shadow-[0_2px_0_#4B39A8]">AI</span>
                         )}
                       </>
                     )}
@@ -203,8 +204,8 @@ function Shell() {
           <button onClick={() => setCollapsed((c) => !c)} className="hidden lg:flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] text-white/45 hover:text-white hover:bg-white/[0.06]">
             {collapsed ? <ChevronsRight size={15} /> : <><ChevronsLeft size={15} /> Collapse</>}
           </button>
-          <div className={`flex items-center gap-2.5 rounded-lg px-2 py-2 ${collapsed ? 'lg:justify-center' : ''}`}>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue to-violet flex items-center justify-center text-[11px] font-bold shrink-0">{initials}</div>
+          <div className={`flex items-center gap-2.5 rounded-xl px-2 py-2 bg-white/[0.04] border border-white/[0.06] ${collapsed ? 'lg:justify-center' : ''}`}>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-light to-brand flex items-center justify-center text-[11px] font-bold shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_2px_0_#0A4F4A]">{initials}</div>
             <div className={`flex-1 min-w-0 ${collapsed ? 'lg:hidden' : ''}`}>
               <p className="text-[13px] font-semibold truncate">{user?.name}</p>
               <p className="text-[10px] text-white/45 truncate capitalize">{user?.roles?.map((r) => r.replace(/_/g, ' ')).join(', ')}</p>
@@ -216,10 +217,10 @@ function Shell() {
         </div>
       </aside>
 
-      {sidebarOpen && <div className="fixed inset-0 bg-ink/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && <div className="fixed inset-0 bg-graphite/60 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="h-16 bg-surface/90 backdrop-blur border-b border-border flex items-center gap-3 px-4 lg:px-6 shrink-0">
+        <header className="relative z-20 h-16 bg-surface/85 backdrop-blur-md border-b border-border shadow-[0_3px_0_-1px_#CDD6DC,0_12px_24px_-18px_rgba(29,35,44,.35)] flex items-center gap-3 px-4 lg:px-6 shrink-0">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-ink-muted p-1.5 rounded-lg hover:bg-surface-subtle" aria-label="Open menu">
             <Menu size={20} />
           </button>
@@ -228,15 +229,15 @@ function Shell() {
             {hasPermission('dashboard.view') && (
               <button
                 onClick={() => setCopilotOpen(!copilotOpen)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold text-white bg-gradient-to-r from-violet to-blue shadow-sm shadow-violet/30 hover:opacity-95 transition"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold text-white bg-gradient-to-b from-[#8E7CF0] to-violet shadow-[inset_0_1px_0_rgba(255,255,255,.25),0_3px_0_#4B39A8,0_8px_16px_-8px_rgba(106,85,207,.6)] hover:brightness-105 active:translate-y-[3px] active:shadow-none transition-all duration-100"
               >
                 <Sparkles size={15} /> <span className="hidden sm:inline">Ask Copilot</span>
               </button>
             )}
-            <button className="relative p-2 rounded-lg hover:bg-surface-subtle text-ink-muted hover:text-ink transition" aria-label="Notifications">
+            <button className="relative p-2 rounded-xl bg-surface border border-border shadow-key-neutral text-ink-muted hover:text-ink active:translate-y-[2px] active:shadow-none transition-all duration-100" aria-label="Notifications">
               <Bell size={18} />
               {notifCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red text-white text-[10px] font-bold flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
                   {notifCount > 99 ? '99+' : notifCount}
                 </span>
               )}
@@ -244,7 +245,7 @@ function Shell() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-canvas">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-7">
           <div className="max-w-[1600px] mx-auto">
             <Outlet />
           </div>

@@ -153,7 +153,7 @@ export default function Transfers() {
           {items.map((item, i) => (
             <div key={i} className="flex gap-2">
               <select value={item.product_id}
-                className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none"
+                className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none"
                 onChange={(e) => {
                   const c = [...items]; c[i] = { ...c[i], product_id: e.target.value }
                   setItems(c)
@@ -162,7 +162,7 @@ export default function Transfers() {
                 {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <input type="number" min="0.001" step="0.001" value={item.quantity}
-                className="w-24 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-blue/40 focus:border-blue outline-none"
+                className="w-24 border border-border rounded-lg px-3 py-2 text-sm text-ink bg-surface focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none"
                 onChange={(e) => {
                   const c = [...items]; c[i] = { ...c[i], quantity: e.target.value }
                   setItems(c)
@@ -224,7 +224,7 @@ export default function Transfers() {
           <Table headers={['Transfer #', 'From', 'To', 'Status', 'Items', 'Created', 'Actions']}>
             {transfers.map((t) => (
               <tr key={t.id} className="hover:bg-surface-subtle/60 transition">
-                <td className="px-4 py-3 font-mono text-xs font-semibold text-blue">{t.number}</td>
+                <td className="px-4 py-3 font-mono text-xs font-semibold text-brand">{t.number}</td>
                 <td className="px-4 py-3 font-medium text-ink">{t.source_warehouse?.name || '—'}</td>
                 <td className="px-4 py-3 font-medium text-ink">{t.destination_warehouse?.name || '—'}</td>
                 <td className="px-4 py-3"><Badge status={t.status}>{t.status.replace(/_/g, ' ')}</Badge></td>

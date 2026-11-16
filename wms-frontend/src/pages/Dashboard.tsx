@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Boxes, Lock, AlertTriangle, ShoppingCart, ArrowLeftRight, ArrowRight, DollarSign, PackageOpen,
   Sparkles, RefreshCw, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, Info, XCircle, Warehouse,
-  Grid3x3, Truck, ClipboardList, PackageCheck, Activity,
+  Truck, ClipboardList, PackageCheck, Activity, LayoutDashboard, Box,
 } from 'lucide-react'
 import { get } from '../services/apiClient'
-import { Card, Badge, EmptyState, ErrorBanner, Skeleton } from '../components/ui'
-import { ThroughputChart, PipelineBars, Meter, type ThroughputPoint, type PipelineStage } from '../components/charts'
+import { Card, Badge, EmptyState, ErrorBanner, Skeleton, Tilt, CubeChip } from '../components/ui'
+import {
+  ThroughputChart, PipelineBars, OccupancyCube, WarehouseFloor3D, type ThroughputPoint, type PipelineStage,
+} from '../components/charts'
 import { useAuth } from '../context/AuthContext'
 import { useCopilot } from '../components/Copilot'
 import { errMsg, fmtMoney, fmtNum } from '../lib/errors'
@@ -44,35 +46,57 @@ const ACTION_ROUTES: Record<string, string> = {
 
 const MOVE_LABEL: Record<string, { label: string; tone: string; sign: string }> = {
   stock_in: { label: 'Received', tone: 'text-mint bg-mint-soft', sign: '+' },
-  stock_out: { label: 'Shipped', tone: 'text-blue bg-blue-soft', sign: '−' },
+  stock_out: { label: 'Shipped', tone: 'text-steel bg-steel-soft', sign: '−' },
   transfer_in: { label: 'Transfer in', tone: 'text-mint bg-mint-soft', sign: '+' },
-  transfer_out: { label: 'Transfer out', tone: 'text-violet bg-violet/10', sign: '−' },
+  transfer_out: { label: 'Transfer out', tone: 'text-violet bg-violet-soft', sign: '−' },
   adjustment: { label: 'Adjustment', tone: 'text-amber bg-amber-soft', sign: '±' },
   return: { label: 'Return', tone: 'text-mint bg-mint-soft', sign: '+' },
   return_damaged: { label: 'Return (damaged)', tone: 'text-red bg-red-soft', sign: '+' },
   damage: { label: 'Damaged', tone: 'text-red bg-red-soft', sign: '−' },
 }
 
-function Kpi({ label, value, sub, icon, tone, to }: { label: string; value: ReactNode; sub?: ReactNode; icon: ReactNode; tone: string; to?: string }) {
+
+type ChipColor = 'brand' | 'steel' | 'mint' | 'amber' | 'red' | 'violet' | 'slate'
+
+function Kpi({ label, value, sub, icon, color, to, delay = 0 }: { label: string; value: ReactNode; sub?: ReactNode; icon: ReactNode; color: ChipColor; to?: string; delay?: number }) {
+  const bar: Record<ChipColor, string> = {
+    brand: 'from-brand-light to-brand', steel: 'from-steel-light to-steel', mint: 'from-mint-light to-mint',
+    amber: 'from-amber-light to-[#D97706]', red: 'from-[#EF5350] to-red', violet: 'from-[#8E7CF0] to-violet', slate: 'from-[#3E5A6B] to-graphite-3',
+  }
   const body = (
-    <Card className="p-4 h-full hover:shadow-popover hover:border-blue/30 transition">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{label}</p>
-        <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${tone}`}>{icon}</span>
+    <Tilt className="h-full bg-surface border border-border rounded-2xl shadow-panel hover:shadow-lift p-4 pb-5 relative overflow-hidden animate-rise" style={{ animationDelay: `${delay}ms` }}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-muted pt-1 pop-z-sm">{label}</p>
+        <span className="pop-z"><CubeChip color={color} size={36}>{icon}</CubeChip></span>
       </div>
-      <p className="text-[26px] font-bold text-ink mt-1.5 leading-none tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-ink-muted mt-2">{sub}</p>}
-    </Card>
+      <p className="font-display text-[28px] font-bold text-ink mt-1 leading-none tabular-nums pop-z-sm">{value}</p>
+      {sub && <p className="text-xs text-ink-muted mt-2 pop-z-sm">{sub}</p>}
+      <div className={`absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r ${bar[color]}`} />
+    </Tilt>
   )
-  return to ? <Link to={to} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue rounded-xl">{body}</Link> : body
+  return to ? <Link to={to} className="block h-full focus:outline-none focus-visible:ring-4 focus-visible:ring-brand/25 rounded-2xl">{body}</Link> : body
 }
 
-function SectionTitle({ icon, title, action }: { icon: ReactNode; title: string; action?: ReactNode }) {
+function SectionTitle({ icon, title, sub, action, color = 'slate' }: { icon: ReactNode; title: string; sub?: string; action?: ReactNode; color?: ChipColor }) {
   return (
-    <div className="flex items-center justify-between px-5 pt-4 pb-3">
-      <h2 className="font-semibold text-ink text-sm flex items-center gap-2"><span className="text-ink-subtle">{icon}</span>{title}</h2>
+    <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <CubeChip color={color} size={30}>{icon}</CubeChip>
+        <div className="min-w-0">
+          <h2 className="font-display font-bold text-ink text-[15px] leading-tight">{title}</h2>
+          {sub && <p className="text-[11px] text-ink-muted leading-tight truncate">{sub}</p>}
+        </div>
+      </div>
       {action}
     </div>
+  )
+}
+
+function LinkPill({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="shrink-0 text-[11px] font-bold text-brand bg-brand-soft hover:bg-brand hover:text-white border border-brand/20 rounded-lg px-2.5 py-1 inline-flex items-center gap-1 transition-colors">
+      {children}
+    </Link>
   )
 }
 
@@ -94,48 +118,49 @@ function AiInsights({ warehouseId }: { warehouseId: string }) {
     send(`On the dashboard you flagged: "${ins.title}" — ${ins.detail}. Take care of this for me: check the live data and prepare exactly what is needed (for example a replenishment purchase order, a stock adjustment, or an operation on an existing order) and show me the action card to confirm.`)
   }
 
-  const icon = { critical: <XCircle size={15} />, warning: <AlertTriangle size={15} />, info: <Info size={15} />, success: <CheckCircle2 size={15} /> }
-  const tone = { critical: 'text-red bg-red-soft', warning: 'text-amber bg-amber-soft', info: 'text-blue bg-blue-soft', success: 'text-mint bg-mint-soft' }
+  const icon = { critical: <XCircle size={14} />, warning: <AlertTriangle size={14} />, info: <Info size={14} />, success: <CheckCircle2 size={14} /> }
+  const chip: Record<string, ChipColor> = { critical: 'red', warning: 'amber', info: 'steel', success: 'mint' }
 
   return (
     <Card className="overflow-hidden h-full flex flex-col">
-      <div className="px-5 pt-4 pb-3 flex items-center gap-2 bg-gradient-to-r from-violet/[0.07] to-blue/[0.05] border-b border-border">
-        <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet to-blue text-white flex items-center justify-center"><Sparkles size={14} /></span>
-        <div className="flex-1">
-          <h2 className="font-semibold text-ink text-sm leading-tight">AI Insights</h2>
-          <p className="text-[11px] text-ink-muted leading-tight">
+      <div className="relative px-5 pt-4 pb-4 flex items-center gap-2.5 graphite-bg text-white">
+        <span className="relative"><CubeChip color="violet" size={34}><Sparkles size={16} /></CubeChip></span>
+        <div className="relative flex-1">
+          <h2 className="font-display font-bold text-[15px] leading-tight">AI Insights</h2>
+          <p className="text-[11px] text-white/60 leading-tight flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${data?.source === 'ai' ? 'bg-mint-light animate-pulse' : 'bg-amber-light'}`} />
             {data?.source === 'ai' ? 'Generated by AI from live data' : 'Rule-based (AI unreachable)'}
           </p>
         </div>
-        <button onClick={() => load(true)} className="p-1.5 rounded-lg text-ink-muted hover:bg-surface hover:text-ink" aria-label="Refresh insights" title="Refresh">
+        <button onClick={() => load(true)} className="relative p-2 rounded-lg text-white/70 hover:bg-white/10 hover:text-white" aria-label="Refresh insights" title="Refresh">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
-      <div className="flex-1 divide-y divide-border">
+      <div className="flex-1 p-3 space-y-2 bg-surface-raised">
         {loading && !data ? (
-          <div className="p-5 space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12" />)}</div>
+          <div className="p-2 space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-14" />)}</div>
         ) : !data?.insights?.length ? (
           <EmptyState message="No insights available." />
         ) : data.insights.map((ins, i) => (
-          <div key={i} className="group flex gap-3 px-5 py-3 hover:bg-surface-subtle/60 transition cursor-pointer"
+          <div key={i} className="group flex gap-3 p-3 rounded-xl bg-surface border border-border shadow-[0_2px_0_#E3E9ED] hover:-translate-y-0.5 hover:shadow-panel hover:border-violet/30 transition-all cursor-pointer"
             onClick={() => navigate(ACTION_ROUTES[ins.action] ?? '/dashboard')} title="Open the module">
-            <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tone[ins.severity] ?? tone.info}`}>{icon[ins.severity] ?? icon.info}</span>
+            <CubeChip color={chip[ins.severity] ?? 'steel'} size={28}>{icon[ins.severity] ?? icon.info}</CubeChip>
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-ink">{ins.title}</p>
+              <p className="text-[13px] font-bold text-ink leading-snug">{ins.title}</p>
               <p className="text-xs text-ink-muted leading-relaxed">{ins.detail}</p>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); handleWithCopilot(ins) }}
-              className="self-center shrink-0 flex items-center gap-1 text-[11px] font-semibold text-violet px-2 py-1 rounded-lg hover:bg-violet/10 transition opacity-60 group-hover:opacity-100"
+              className="self-center shrink-0 flex items-center gap-1 text-[11px] font-bold text-violet px-2 py-1 rounded-lg bg-violet-soft hover:bg-violet hover:text-white transition opacity-70 group-hover:opacity-100"
               title="Let the AI Copilot handle this insight">
-              <Sparkles size={13} /> Handle
+              <Sparkles size={12} /> Handle
             </button>
           </div>
         ))}
       </div>
       <button
         onClick={() => { setOpen(true); send('Give me a short operations briefing for today: risks, priorities and what to do first.') }}
-        className="text-xs font-semibold text-violet hover:bg-violet/5 px-5 py-3 border-t border-border text-left flex items-center gap-1.5"
+        className="text-xs font-bold text-violet hover:bg-violet-soft px-5 py-3 border-t border-border text-left flex items-center gap-1.5 bg-surface"
       >
         <Sparkles size={13} /> Ask Copilot for a full briefing <ArrowRight size={13} />
       </button>
@@ -178,126 +203,141 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-ink-muted">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
-          <h1 className="text-2xl font-bold text-ink tracking-tight">{greeting}, {user?.name?.split(' ')[0]}</h1>
-          <p className="text-sm text-ink-muted">Warehouse control tower — live stock, flow and fulfilment status.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Warehouse size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle pointer-events-none" />
-            <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} aria-label="Warehouse"
-              className="pl-8 pr-8 py-2 text-sm border border-border rounded-lg bg-surface text-ink focus:ring-2 focus:ring-blue/30 outline-none">
-              <option value="">All warehouses</option>
-              {warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}
-            </select>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-slide-up">
+        <div className="flex items-center gap-4">
+          <Tilt max={12} className="hidden sm:block"><CubeChip color="brand" size={54}><LayoutDashboard size={22} /></CubeChip></Tilt>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand">
+              {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            <h1 className="font-display text-[28px] font-bold text-ink tracking-tight leading-tight">{greeting}, {user?.name?.split(' ')[0]}</h1>
+            <p className="text-sm text-ink-muted">Warehouse control tower — live stock, flow and fulfilment status.</p>
           </div>
-          <button onClick={() => { setLoading(true); load() }} className="p-2 rounded-lg border border-border bg-surface text-ink-muted hover:text-ink" aria-label="Refresh">
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          </button>
+        </div>
+        <div className="flex flex-col items-start md:items-end gap-1.5">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Warehouse size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand pointer-events-none" />
+              <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} aria-label="Warehouse"
+                className="pl-8 pr-8 py-2.5 text-sm font-semibold border border-border rounded-xl bg-surface text-ink shadow-key-neutral focus:shadow-glow focus:border-brand outline-none">
+                <option value="">All warehouses</option>
+                {warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}
+              </select>
+            </div>
+            <button onClick={() => { setLoading(true); load() }} className="p-2.5 rounded-xl border border-border bg-surface text-ink-muted hover:text-brand shadow-key-neutral active:translate-y-[2px] active:shadow-none transition-all duration-100" aria-label="Refresh">
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+          {updatedAt && (
+            <p className="text-[11px] text-ink-subtle flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-mint animate-pulse" /> Live · updated {updatedAt.toLocaleTimeString()} · auto-refresh every minute
+            </p>
+          )}
         </div>
       </div>
-      {updatedAt && <p className="text-[11px] text-ink-subtle -mt-3">Updated {updatedAt.toLocaleTimeString()} · auto-refresh every minute</p>}
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3">
-        {!c ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[106px] rounded-xl" />) : (
+      <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
+        {!c ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[118px] rounded-2xl" />) : (
           <>
-            <Kpi label="Inventory value" value={fmtMoney(c.stock_value)} sub={`${fmtNum(c.products)} SKUs in catalogue`} icon={<DollarSign size={16} />} tone="bg-mint-soft text-mint" to="/reports" />
-            <Kpi label="Available units" value={fmtNum(c.available)} sub={<>{fmtNum(c.on_hand)} on hand · {fmtNum(c.reserved)} reserved</>} icon={<Boxes size={16} />} tone="bg-blue-soft text-blue" to="/inventory" />
-            <Kpi label="Open orders" value={fmtNum(c.pending_sales_orders)} sub={`${c.open_pick_lists} pick lists open`} icon={<PackageOpen size={16} />} tone="bg-violet/10 text-violet" to="/sales" />
-            <Kpi label="Inbound POs" value={fmtNum(c.pending_purchase_orders)} sub={`${c.open_putaway} putaway batches open`} icon={<ShoppingCart size={16} />} tone="bg-blue-soft text-blue" to="/purchasing" />
-            <Kpi label="Low stock" value={fmtNum(c.low_stock_products)} sub={c.out_of_stock_products > 0 ? <span className="text-red font-semibold">{c.out_of_stock_products} out of stock</span> : 'No stock-outs'} icon={<AlertTriangle size={16} />} tone="bg-amber-soft text-amber" to="/inventory?low_stock=1" />
-            <Kpi label="Transfers" value={fmtNum(c.pending_transfers)} sub="in progress between sites" icon={<ArrowLeftRight size={16} />} tone="bg-surface-subtle text-ink-muted" to="/transfers" />
+            <Kpi delay={0} label="Inventory value" value={fmtMoney(c.stock_value)} sub={`${fmtNum(c.products)} SKUs in catalogue`} icon={<DollarSign size={17} />} color="mint" to="/reports" />
+            <Kpi delay={50} label="Available units" value={fmtNum(c.available)} sub={<>{fmtNum(c.on_hand)} on hand · {fmtNum(c.reserved)} reserved</>} icon={<Boxes size={17} />} color="brand" to="/inventory" />
+            <Kpi delay={100} label="Open orders" value={fmtNum(c.pending_sales_orders)} sub={`${c.open_pick_lists} pick lists open`} icon={<PackageOpen size={17} />} color="steel" to="/sales" />
+            <Kpi delay={150} label="Inbound POs" value={fmtNum(c.pending_purchase_orders)} sub={`${c.open_putaway} putaway batches open`} icon={<ShoppingCart size={17} />} color="violet" to="/purchasing" />
+            <Kpi delay={200} label="Low stock" value={fmtNum(c.low_stock_products)} sub={c.out_of_stock_products > 0 ? <span className="text-red font-bold">{c.out_of_stock_products} out of stock</span> : 'No stock-outs'} icon={<AlertTriangle size={17} />} color={c.out_of_stock_products > 0 ? 'red' : 'amber'} to="/inventory?low_stock=1" />
+            <Kpi delay={250} label="Transfers" value={fmtNum(c.pending_transfers)} sub="in progress between sites" icon={<ArrowLeftRight size={17} />} color="slate" to="/transfers" />
           </>
         )}
       </div>
 
-      {/* Flow + AI */}
+      {/* 3D floor + AI */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <Card className="xl:col-span-2">
-          <SectionTitle icon={<Activity size={15} />} title="Warehouse throughput" action={
-            c && <div className="flex gap-4 text-xs text-ink-muted">
-              <span className="inline-flex items-center gap-1"><ArrowDownToLine size={13} className="text-mint" /> Today in <b className="text-ink tabular-nums">{fmtNum(c.today_received)}</b></span>
-              <span className="inline-flex items-center gap-1"><ArrowUpFromLine size={13} className="text-blue" /> Shipped today <b className="text-ink tabular-nums">{c.today_shipped}</b></span>
+        <Card className="xl:col-span-2 overflow-hidden">
+          <SectionTitle color="brand" icon={<Box size={15} />} title="3D warehouse floor" sub="One rack per site · filled slots show relative on-hand volume · click a rack to filter"
+            action={hasPermission('locations.view') ? <LinkPill to="/locations">Locations <ArrowRight size={12} /></LinkPill> : undefined} />
+          <div className="grid md:grid-cols-[1fr_210px] gap-0 border-t border-border">
+            <div className="px-4 py-5 bg-gradient-to-b from-surface-raised to-surface-subtle/60 min-h-[260px] flex items-center">
+              {!data ? <Skeleton className="h-60 w-full" /> : data.warehouses.length === 0 ? (
+                <div className="w-full"><EmptyState message="No warehouses configured yet." /></div>
+              ) : (
+                <div className="w-full">
+                  <WarehouseFloor3D sites={data.warehouses} selectedId={warehouseId} onSelect={setWarehouseId} stagingUnits={c?.staging_units ?? 0} />
+                </div>
+              )}
             </div>
-          } />
-          <div className="px-5 pb-5">{data ? <ThroughputChart data={data.throughput} /> : <Skeleton className="h-56" />}</div>
+            <div className="border-t md:border-t-0 md:border-l border-border p-4 flex md:flex-col items-center md:items-stretch gap-4 bg-surface">
+              {c ? (
+                <>
+                  <div className="flex flex-col items-center">
+                    <OccupancyCube pct={binPct} size={110} />
+                    <p className="font-display text-2xl font-bold text-ink tabular-nums mt-1">{binPct}%</p>
+                    <p className="text-[11px] text-ink-muted">bin occupancy · {fmtNum(c.occupied_bins)}/{fmtNum(c.total_bins)}</p>
+                  </div>
+                  <div className="flex-1 grid grid-cols-1 gap-2 w-full">
+                    <div className="rounded-xl bg-mint-soft border border-mint/20 px-3 py-2 shadow-[0_2px_0_rgb(21_128_61/.15)]">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-mint flex items-center gap-1"><ArrowDownToLine size={12} /> Received today</p>
+                      <p className="font-display text-lg font-bold text-ink tabular-nums">{fmtNum(c.today_received)}</p>
+                    </div>
+                    <div className="rounded-xl bg-steel-soft border border-steel/20 px-3 py-2 shadow-[0_2px_0_rgb(45_91_136/.15)]">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-steel flex items-center gap-1"><ArrowUpFromLine size={12} /> Shipped today</p>
+                      <p className="font-display text-lg font-bold text-ink tabular-nums">{fmtNum(c.today_shipped)}</p>
+                    </div>
+                    {c.staging_units > 0 && (
+                      <Link to="/putaway" className="rounded-xl bg-amber-soft border border-amber/25 px-3 py-2 hover:-translate-y-0.5 transition shadow-[0_2px_0_rgb(180_83_9/.15)]">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-amber flex items-center gap-1"><PackageCheck size={12} /> In staging</p>
+                        <p className="font-display text-lg font-bold text-ink tabular-nums">{fmtNum(c.staging_units)} <span className="text-[11px] font-sans font-medium text-ink-muted">units to put away</span></p>
+                      </Link>
+                    )}
+                  </div>
+                </>
+              ) : <Skeleton className="h-60 w-full" />}
+            </div>
+          </div>
         </Card>
         <AiInsights warehouseId={warehouseId} />
       </div>
 
-      {/* Pipeline / storage / low stock */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+      {/* Throughput + pipeline */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Card className="xl:col-span-2">
+          <SectionTitle color="mint" icon={<Activity size={15} />} title="Warehouse throughput" sub="Units received vs. shipped per day" />
+          <div className="px-5 pb-5">{data ? <ThroughputChart data={data.throughput} /> : <Skeleton className="h-60" />}</div>
+        </Card>
         <Card>
-          <SectionTitle icon={<Truck size={15} />} title="Fulfilment pipeline" action={<Link to="/sales" className="text-xs font-semibold text-blue hover:underline">Orders</Link>} />
+          <SectionTitle color="steel" icon={<Truck size={15} />} title="Fulfilment pipeline" sub="Sales orders by stage · click to act" action={<LinkPill to="/sales">Orders <ArrowRight size={12} /></LinkPill>} />
           <div className="px-5 pb-5">
             {data ? <PipelineBars data={data.pipeline} onSelect={(s) => navigate(
               s === 'confirmed' || s === 'picking' ? '/picking' : s === 'picked' ? '/packing' : s === 'packed' ? '/shipping' : '/sales',
             )} /> : <Skeleton className="h-48" />}
           </div>
         </Card>
+      </div>
 
+      {/* Replenishment / activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 min-[1760px]:grid-cols-4 gap-4">
         <Card>
-          <SectionTitle icon={<Grid3x3 size={15} />} title="Storage & sites" action={hasPermission('locations.view') ? <Link to="/locations" className="text-xs font-semibold text-blue hover:underline">Locations</Link> : undefined} />
-          <div className="px-5 pb-5 space-y-4">
-            {c ? (
-              <>
-                <div>
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <span className="text-xs text-ink-muted">Bin occupancy</span>
-                    <span className="text-sm font-bold text-ink tabular-nums">{binPct}% <span className="text-xs font-normal text-ink-muted">({c.occupied_bins}/{c.total_bins} bins)</span></span>
-                  </div>
-                  <Meter value={c.occupied_bins} max={c.total_bins} label="Bin occupancy" />
-                  {c.staging_units > 0 && (
-                    <Link to="/putaway" className="mt-2 text-xs text-amber font-medium inline-flex items-center gap-1 hover:underline">
-                      <PackageCheck size={13} /> {fmtNum(c.staging_units)} units waiting in staging for putaway
-                    </Link>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {data!.warehouses.map((w) => (
-                    <button key={w.id} onClick={() => setWarehouseId(String(w.id))}
-                      className={`w-full text-left rounded-lg border px-3 py-2.5 transition ${String(w.id) === warehouseId ? 'border-blue bg-blue-soft/40' : 'border-border hover:border-blue/40'}`}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-ink truncate"><span className="font-mono text-xs text-ink-muted mr-1.5">{w.code}</span>{w.name}</span>
-                      </div>
-                      <div className="flex gap-4 mt-1 text-xs text-ink-muted tabular-nums">
-                        <span><b className="text-ink">{fmtNum(w.on_hand)}</b> on hand</span>
-                        <span><b className="text-ink">{w.skus}</b> SKUs</span>
-                        <span><b className="text-ink">{w.open_orders}</b> open orders</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : <Skeleton className="h-48" />}
-          </div>
-        </Card>
-
-        <Card className="lg:col-span-2 xl:col-span-1">
-          <SectionTitle icon={<AlertTriangle size={15} />} title="Replenishment needed" action={<Link to="/purchasing" className="text-xs font-semibold text-blue hover:underline">Create PO</Link>} />
+          <SectionTitle color="amber" icon={<AlertTriangle size={15} />} title="Replenishment needed" action={<LinkPill to="/purchasing">Create PO</LinkPill>} />
           {!data ? <div className="px-5 pb-5"><Skeleton className="h-48" /></div> : data.low_stock_items.length === 0 ? (
             <EmptyState message="All SKUs are above their reorder level." icon={<CheckCircle2 size={26} />} />
           ) : (
-            <div className="divide-y divide-border">
+            <div className="px-3 pb-3 space-y-1.5">
               {data.low_stock_items.map((p) => {
                 const pct = p.reorder_level > 0 ? Math.max(0, Math.min(100, (p.available / p.reorder_level) * 100)) : 0
+                const out = p.available <= 0
                 return (
-                  <div key={`${p.id}-${p.warehouse}`} className="px-5 py-2.5">
+                  <div key={`${p.id}-${p.warehouse}`} className="px-2.5 py-2 rounded-xl hover:bg-surface-subtle transition">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-ink truncate">{p.name}</p>
+                        <p className="text-sm font-semibold text-ink truncate">{p.name}</p>
                         <p className="text-[11px] text-ink-muted font-mono">{p.sku}{p.warehouse ? ` · ${p.warehouse}` : ''}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className={`text-sm font-bold tabular-nums ${p.available <= 0 ? 'text-red' : 'text-amber'}`}>{fmtNum(p.available)}</p>
-                        <p className="text-[11px] text-ink-muted">reorder at {fmtNum(p.reorder_level)}</p>
+                        <p className={`font-display text-sm font-bold tabular-nums ${out ? 'text-red' : 'text-amber'}`}>{fmtNum(p.available)}</p>
+                        <p className="text-[10px] text-ink-muted">reorder at {fmtNum(p.reorder_level)}</p>
                       </div>
                     </div>
-                    <div className="h-1.5 mt-1.5 rounded-full bg-surface-subtle overflow-hidden">
-                      <div className={`h-full rounded-full ${p.available <= 0 ? 'bg-red' : 'bg-amber'}`} style={{ width: `${pct}%` }} />
+                    <div className="h-2 mt-1.5 rounded-full well overflow-hidden">
+                      <div className={`h-full rounded-full ${out ? 'bg-red' : 'bg-gradient-to-r from-amber-light to-[#D97706]'}`} style={{ width: `${Math.max(pct, out ? 100 : 4)}%`, opacity: out ? 0.35 : 1 }} />
                     </div>
                   </div>
                 )
@@ -305,26 +345,23 @@ export default function Dashboard() {
             </div>
           )}
         </Card>
-      </div>
 
-      {/* Activity */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <Card className="xl:col-span-1">
-          <SectionTitle icon={<ClipboardList size={15} />} title="Live stock movements" action={<Link to="/inventory" className="text-xs font-semibold text-blue hover:underline">Stock</Link>} />
+        <Card>
+          <SectionTitle color="brand" icon={<ClipboardList size={15} />} title="Live stock movements" action={<LinkPill to="/inventory">Stock</LinkPill>} />
           {!data ? <div className="px-5 pb-5"><Skeleton className="h-48" /></div> : data.recent_movements.length === 0 ? (
             <EmptyState message="No movements yet." />
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="px-3 pb-3 space-y-1">
               {data.recent_movements.map((m) => {
                 const meta = MOVE_LABEL[m.movement_type] ?? { label: m.movement_type, tone: 'text-ink-muted bg-surface-subtle', sign: '' }
                 return (
-                  <li key={m.id} className="px-5 py-2.5 flex items-center gap-3">
-                    <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${meta.tone}`}>{meta.label}</span>
+                  <li key={m.id} className="px-2.5 py-2 rounded-xl flex items-center gap-3 hover:bg-surface-subtle transition">
+                    <span className={`text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md ${meta.tone}`}>{meta.label}</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] text-ink truncate"><span className="font-mono text-xs text-ink-muted">{m.product?.sku}</span> {m.product?.name}</p>
                       <p className="text-[11px] text-ink-subtle">{m.warehouse?.code}{m.bin ? ` / ${m.bin.code}` : ' / staging'} · {new Date(m.created_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
-                    <span className="text-sm font-semibold text-ink tabular-nums">{meta.sign}{fmtNum(m.quantity)}</span>
+                    <span className="font-display text-sm font-bold text-ink tabular-nums">{meta.sign}{fmtNum(m.quantity)}</span>
                   </li>
                 )
               })}
@@ -333,21 +370,19 @@ export default function Dashboard() {
         </Card>
 
         {[
-          { title: 'Recent sales orders', icon: <Truck size={15} />, to: '/sales', rows: data?.recent_sales_orders, party: (o: Order) => o.customer?.name },
-          { title: 'Recent purchase orders', icon: <ShoppingCart size={15} />, to: '/purchasing', rows: data?.recent_purchase_orders, party: (o: Order) => o.supplier?.name },
+          { title: 'Recent sales orders', icon: <Truck size={15} />, color: 'steel' as const, to: '/sales', rows: data?.recent_sales_orders, party: (o: Order) => o.customer?.name },
+          { title: 'Recent purchase orders', icon: <ShoppingCart size={15} />, color: 'mint' as const, to: '/purchasing', rows: data?.recent_purchase_orders, party: (o: Order) => o.supplier?.name },
         ].map((block) => (
           <Card key={block.title}>
-            <SectionTitle icon={block.icon} title={block.title} action={
-              <Link to={block.to} className="text-xs font-semibold text-blue hover:underline inline-flex items-center gap-1">View all <ArrowRight size={12} /></Link>
-            } />
+            <SectionTitle color={block.color} icon={block.icon} title={block.title} action={<LinkPill to={block.to}>View all <ArrowRight size={12} /></LinkPill>} />
             {!block.rows ? <div className="px-5 pb-5"><Skeleton className="h-48" /></div> : block.rows.length === 0 ? (
               <EmptyState message="Nothing yet." />
             ) : (
-              <div className="divide-y divide-border">
+              <div className="px-3 pb-3 space-y-1">
                 {block.rows.map((o) => (
-                  <div key={o.id} className="flex items-center justify-between gap-2 px-5 py-2.5">
+                  <div key={o.id} className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl hover:bg-surface-subtle transition">
                     <div className="min-w-0">
-                      <p className="font-mono text-xs font-semibold text-ink">{o.number}</p>
+                      <p className="font-mono text-xs font-bold text-ink">{o.number}</p>
                       <p className="text-xs text-ink-muted truncate">{block.party(o) || '—'}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
@@ -363,10 +398,11 @@ export default function Dashboard() {
       </div>
 
       {c && c.damaged > 0 && (
-        <Card className="p-4 border-l-4 border-l-red flex items-center gap-3">
-          <Lock size={16} className="text-red" />
+        <Card className="relative overflow-hidden p-4 pl-6 flex items-center gap-3">
+          <span className="absolute left-0 inset-y-0 w-1.5 bg-red" />
+          <CubeChip color="red" size={32}><Lock size={15} /></CubeChip>
           <p className="text-sm text-ink flex-1"><b>{fmtNum(c.damaged)}</b> damaged units are quarantined. Inspect and write off or return them to the supplier.</p>
-          <Link to="/inventory" className="text-xs font-semibold text-red hover:underline">Review</Link>
+          <Link to="/inventory" className="text-xs font-bold text-red hover:underline">Review</Link>
         </Card>
       )}
     </div>

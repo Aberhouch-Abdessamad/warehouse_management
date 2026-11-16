@@ -150,7 +150,7 @@ export default function Putaway() {
               const done = (b.items ?? []).reduce((s, i) => s + Number(i.putaway_quantity), 0)
               return (
                 <tr key={b.id} className="hover:bg-surface-subtle/60">
-                  <td className="px-4 py-2.5 pl-5 font-mono text-xs font-semibold text-blue">{b.number}</td>
+                  <td className="px-4 py-2.5 pl-5 font-mono text-xs font-semibold text-brand">{b.number}</td>
                   <td className="px-4 py-2.5 text-ink">{b.warehouse?.name ?? '—'}</td>
                   <td className="px-4 py-2.5 text-ink-muted">{b.items?.length ?? 0}</td>
                   <td className="px-4 py-2.5 w-40">
