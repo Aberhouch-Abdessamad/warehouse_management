@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Hash;
 class AdminUserSeeder extends Seeder
 {
     /**
-     * Seed the first admin user and assign the super_admin role.
+     * Seed one login account per role so the app can be explored from
+     * each role's perspective. Emails match the demo-account quick
+     * login buttons in the frontend. All use the password "password".
      */
     public function run(): void
     {
@@ -24,24 +26,40 @@ class AdminUserSeeder extends Seeder
             $superAdminRole = Role::where('name', 'super_admin')->first();
         }
 
-        $adminUser = User::updateOrCreate(
-            ['email' => 'admin@wms.com'],
-            [
-                'name' => 'System Administrator',
-                'email' => 'admin@wms.com',
-                'password' => Hash::make('password'),
-                'phone' => '+1-555-0100',
-                'is_active' => true,
-                'email_verified_at' => now(),
-            ]
-        );
+        $accounts = [
+            ['name' => 'System Administrator', 'email' => 'admin@wms.test', 'phone' => '+1-555-0100', 'role' => 'super_admin'],
+            ['name' => 'Warehouse Manager', 'email' => 'manager@wms.test', 'phone' => '+1-555-0101', 'role' => 'warehouse_manager'],
+            ['name' => 'Floor Staff', 'email' => 'staff@wms.test', 'phone' => '+1-555-0102', 'role' => 'warehouse_staff'],
+            ['name' => 'Purchasing Manager', 'email' => 'purchasing@wms.test', 'phone' => '+1-555-0103', 'role' => 'purchasing_manager'],
+            ['name' => 'Sales Manager', 'email' => 'sales@wms.test', 'phone' => '+1-555-0104', 'role' => 'sales_manager'],
+        ];
 
-        if (! $adminUser->hasRole('super_admin')) {
-            $adminUser->roles()->attach($superAdminRole->id);
+        foreach ($accounts as $account) {
+            $role = Role::where('name', $account['role'])->first();
+
+            if (! $role) {
+                $this->command->warn("Role {$account['role']} not found, skipping {$account['email']}.");
+
+                continue;
+            }
+
+            $user = User::updateOrCreate(
+                ['email' => $account['email']],
+                [
+                    'name' => $account['name'],
+                    'email' => $account['email'],
+                    'password' => Hash::make('password'),
+                    'phone' => $account['phone'],
+                    'is_active' => true,
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            $user->roles()->sync([$role->id]);
+
+            $this->command->info("  {$account['email']} ({$account['role']})");
         }
 
-        $this->command->info('First admin user created successfully.');
-        $this->command->info('  Email:    admin@wms.com');
-        $this->command->info('  Password: password');
+        $this->command->info('Role accounts created successfully. Password for all: password');
     }
 }
