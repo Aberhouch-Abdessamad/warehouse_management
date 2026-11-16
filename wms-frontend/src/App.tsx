@@ -23,6 +23,8 @@ import Locations from './pages/Locations'
 import Users from './pages/Users'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import Assistant from './pages/Assistant'
+import { RequirePermission } from './components/RequireAuth'
 
 export default function App() {
   return (
@@ -36,27 +38,28 @@ export default function App() {
         }
       >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/suppliers" element={<Suppliers />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/warehouses" element={<Warehouses />} />
-        <Route path="/transfers" element={<Transfers />} />
-        <Route path="/purchasing" element={<Purchasing />} />
-        <Route path="/sales" element={<Sales />} />
-        <Route path="/receiving" element={<Receiving />} />
-        <Route path="/putaway" element={<Putaway />} />
-        <Route path="/packing" element={<Packing />} />
-        <Route path="/shipping" element={<Shipping />} />
-        <Route path="/returns" element={<Returns />} />
-        <Route path="/stock-counts" element={<StockCount />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/audit-logs" element={<AuditLogs />} />
-        <Route path="/locations" element={<Locations />} />
-        <Route path="/users" element={<Users />} />
-        <Route path="/picking" element={<Picking />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/dashboard" element={<RequirePermission permission={'dashboard.view'}><Dashboard /></RequirePermission>} />
+        <Route path="/inventory" element={<RequirePermission permission={'stock.view'}><Inventory /></RequirePermission>} />
+        <Route path="/products" element={<RequirePermission permission={'products.view'}><Products /></RequirePermission>} />
+        <Route path="/suppliers" element={<RequirePermission permission={'suppliers.view'}><Suppliers /></RequirePermission>} />
+        <Route path="/customers" element={<RequirePermission permission={'customers.view'}><Customers /></RequirePermission>} />
+        <Route path="/warehouses" element={<RequirePermission permission={'warehouses.view'}><Warehouses /></RequirePermission>} />
+        <Route path="/transfers" element={<RequirePermission permission={'transfers.view'}><Transfers /></RequirePermission>} />
+        <Route path="/purchasing" element={<RequirePermission permission={'purchase-orders.view'}><Purchasing /></RequirePermission>} />
+        <Route path="/sales" element={<RequirePermission permission={'sales-orders.view'}><Sales /></RequirePermission>} />
+        <Route path="/receiving" element={<RequirePermission permission={['purchase-orders.receive', 'purchase-orders.view']}><Receiving /></RequirePermission>} />
+        <Route path="/putaway" element={<RequirePermission permission={'putaway.view'}><Putaway /></RequirePermission>} />
+        <Route path="/packing" element={<RequirePermission permission={'packing.view'}><Packing /></RequirePermission>} />
+        <Route path="/shipping" element={<RequirePermission permission={'shipping.view'}><Shipping /></RequirePermission>} />
+        <Route path="/returns" element={<RequirePermission permission={'returns.view'}><Returns /></RequirePermission>} />
+        <Route path="/stock-counts" element={<RequirePermission permission={'stock-counts.view'}><StockCount /></RequirePermission>} />
+        <Route path="/reports" element={<RequirePermission permission={'reports.view'}><Reports /></RequirePermission>} />
+        <Route path="/audit-logs" element={<RequirePermission permission={'audit-logs.view'}><AuditLogs /></RequirePermission>} />
+        <Route path="/locations" element={<RequirePermission permission={'locations.view'}><Locations /></RequirePermission>} />
+        <Route path="/users" element={<RequirePermission permission={'users.view'}><Users /></RequirePermission>} />
+        <Route path="/picking" element={<RequirePermission permission={'picking.view'}><Picking /></RequirePermission>} />
+        <Route path="/assistant" element={<RequirePermission permission="dashboard.view"><Assistant /></RequirePermission>} />
+        <Route path="/settings" element={<RequirePermission permission={'settings.view'}><Settings /></RequirePermission>} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

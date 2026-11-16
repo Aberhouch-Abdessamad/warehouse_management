@@ -49,16 +49,33 @@ class InventoryService
             $deltaReserved = 0;
             $deltaDamaged = 0;
 
+            // Outbound movements must respect the warehouse-wide reservation pool,
+            // because reservations are held at warehouse level (bin_id = null)
+            // while physical stock lives in bins.
+            $checkWarehouse = function (float $qty) use ($params, $allowNegative) {
+                if ($allowNegative) {
+                    return;
+                }
+                $available = $this->availableInWarehouse(
+                    (int) $params['product_id'],
+                    $params['product_variant_id'] ?? null,
+                    (int) $params['warehouse_id']
+                );
+                if ($available + 1e-9 < $qty) {
+                    throw new InvalidArgumentException(
+                        "Insufficient available stock in warehouse. Available: {$available}, requested: {$qty}."
+                    );
+                }
+            };
+
             switch ($movementType) {
                 case 'stock_in':
                     $deltaOnHand = $quantity;
                     break;
                 case 'stock_out':
-                    $this->assertAvailable($balance, $quantity, $allowNegative);
-                    $deltaOnHand = -$quantity;
-                    break;
                 case 'transfer_out':
-                    $this->assertAvailable($balance, $quantity, $allowNegative);
+                    $this->assertOnHand($balance, $quantity, $allowNegative);
+                    $checkWarehouse($quantity);
                     $deltaOnHand = -$quantity;
                     break;
                 case 'transfer_in':
@@ -68,7 +85,8 @@ class InventoryService
                     // Signed quantity: positive increases, negative decreases
                     $signed = $params['signed_quantity'] ?? $quantity;
                     if ($signed < 0) {
-                        $this->assertAvailable($balance, abs((float) $signed), $allowNegative);
+                        $this->assertOnHand($balance, abs((float) $signed), $allowNegative);
+                        $checkWarehouse(abs((float) $signed));
                     }
                     $deltaOnHand = $signed;
                     $quantity = abs((float) $signed);
@@ -80,13 +98,14 @@ class InventoryService
                     $deltaDamaged = $quantity;
                     break;
                 case 'damage':
-                    $this->assertAvailable($balance, $quantity, $allowNegative);
+                    $this->assertOnHand($balance, $quantity, $allowNegative);
+                    $checkWarehouse($quantity);
                     // move from on-hand to damaged
                     $deltaOnHand = -$quantity;
                     $deltaDamaged = $quantity;
                     break;
                 case 'reservation':
-                    $this->assertAvailable($balance, $quantity, $allowNegative);
+                    $checkWarehouse($quantity);
                     $deltaReserved = $quantity;
                     break;
                 case 'reservation_release':
@@ -179,14 +198,98 @@ class InventoryService
         return $balance;
     }
 
-    private function assertAvailable(InventoryBalance $balance, float $quantity, bool $allowNegative): void
+    /**
+     * Physical check: the specific balance row (bin) must hold enough units.
+     */
+    private function assertOnHand(InventoryBalance $balance, float $quantity, bool $allowNegative): void
     {
-        $available = (float) $balance->quantity_on_hand - (float) $balance->quantity_reserved - (float) $balance->quantity_damaged;
+        $onHand = (float) $balance->quantity_on_hand;
 
-        if (! $allowNegative && ($available - $quantity) < 0) {
+        if (! $allowNegative && ($onHand - $quantity) < -1e-9) {
+            $where = $balance->bin_id ? "bin #{$balance->bin_id}" : 'unassigned/staging location';
             throw new InvalidArgumentException(
-                "Insufficient stock. Available: {$available}, requested: {$quantity}."
+                "Insufficient stock in {$where}. On hand: {$onHand}, requested: {$quantity}."
             );
         }
+    }
+
+    /**
+     * Sellable quantity across the whole warehouse: on hand minus reserved.
+     * (Damaged units live in their own bucket and are never part of on hand.)
+     */
+    public function availableInWarehouse(int $productId, ?int $variantId, int $warehouseId): float
+    {
+        $row = InventoryBalance::where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->where('product_variant_id', $variantId)
+            ->selectRaw('COALESCE(SUM(quantity_on_hand),0) as on_hand, COALESCE(SUM(quantity_reserved),0) as reserved')
+            ->first();
+
+        return round((float) $row->on_hand - (float) $row->reserved, 3);
+    }
+
+    /**
+     * Suggest bins to take $quantity from (largest stock first, staging last).
+     * Returns a list of [bin_id|null, qty]. Throws when the warehouse can't cover it.
+     */
+    public function allocate(int $productId, ?int $variantId, int $warehouseId, float $quantity, ?int $preferredBinId = null): array
+    {
+        $rows = InventoryBalance::where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->where('product_variant_id', $variantId)
+            ->where('quantity_on_hand', '>', 0)
+            ->get()
+            ->sortBy(fn ($b) => [
+                $b->bin_id === $preferredBinId && $preferredBinId !== null ? 0 : 1,
+                $b->bin_id === null ? 1 : 0,
+                -(float) $b->quantity_on_hand,
+            ])
+            ->values();
+
+        $plan = [];
+        $left = $quantity;
+        foreach ($rows as $row) {
+            if ($left <= 1e-9) {
+                break;
+            }
+            $take = min($left, (float) $row->quantity_on_hand);
+            $plan[] = [$row->bin_id, $take];
+            $left -= $take;
+        }
+
+        if ($left > 1e-9) {
+            $have = $quantity - $left;
+            throw new InvalidArgumentException("Insufficient stock to allocate. Found {$have}, requested {$quantity}.");
+        }
+
+        return $plan;
+    }
+
+    /**
+     * Outbound move that spreads the quantity across bins when no bin is given.
+     * Returns the created transactions.
+     */
+    public function moveOut(array $params): array
+    {
+        return DB::transaction(function () use ($params) {
+            if (! empty($params['bin_id'])) {
+                return [$this->move($params)];
+            }
+
+            $plan = $this->allocate(
+                (int) $params['product_id'],
+                $params['product_variant_id'] ?? null,
+                (int) $params['warehouse_id'],
+                (float) $params['quantity'],
+                $params['preferred_bin_id'] ?? null
+            );
+
+            $txs = [];
+            foreach ($plan as [$binId, $qty]) {
+                $txs[] = $this->move(array_merge($params, ['bin_id' => $binId, 'quantity' => $qty]));
+            }
+
+            return $txs;
+        });
     }
 }

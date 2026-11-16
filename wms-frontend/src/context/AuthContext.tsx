@@ -39,6 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         localStorage.removeItem('user')
       }
+      // Refresh roles/permissions from the server so the UI never relies on stale data
+      api.get('/auth/me')
+        .then((r) => {
+          const fresh = r.data?.data
+          if (fresh?.id) {
+            localStorage.setItem('user', JSON.stringify(fresh))
+            setUser({ ...fresh, roles: fresh.roles ?? [], permissions: fresh.permissions ?? [] })
+          }
+        })
+        .catch(() => {})
     }
     setLoading(false)
   }, [])

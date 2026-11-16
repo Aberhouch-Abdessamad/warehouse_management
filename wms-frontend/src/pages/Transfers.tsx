@@ -12,7 +12,7 @@ interface Transfer {
   destination_warehouse?: { name: string }
   status: string
   created_at: string
-  items?: { id: number; product_id: number; quantity: string; picked_quantity: string }[]
+  items?: { id: number; product_id: number; quantity: string; picked_quantity: string; received_quantity: string; product?: { sku: string; name: string } }[]
 }
 
 interface Ref { id: number; name: string }
@@ -33,6 +33,39 @@ export default function Transfers() {
   const [toast, setToast] = useState<string | null>(null)
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
   const [cancelTarget, setCancelTarget] = useState<{ id: number; number: string } | null>(null)
+  const [task, setTask] = useState<{ t: Transfer; mode: 'pick' | 'receive' } | null>(null)
+  const [taskQty, setTaskQty] = useState<Record<number, string>>({})
+  const [taskErr, setTaskErr] = useState<string | null>(null)
+
+  const openTask = (t: Transfer, mode: 'pick' | 'receive') => {
+    const q: Record<number, string> = {}
+    t.items?.forEach((i) => {
+      const left = mode === 'pick' ? Number(i.quantity) - Number(i.picked_quantity) : Number(i.picked_quantity) - Number(i.received_quantity)
+      q[i.id] = String(Math.max(0, left))
+    })
+    setTaskQty(q)
+    setTaskErr(null)
+    setTask({ t, mode })
+  }
+
+  const submitTask = async () => {
+    if (!task) return
+    const key = task.mode === 'pick' ? 'transfer_item_id' : 'transfer_item_id'
+    const items = Object.entries(taskQty).filter(([, v]) => Number(v) > 0).map(([id, v]) => ({ [key]: Number(id), quantity: Number(v) }))
+    if (items.length === 0) return setTaskErr('Enter at least one quantity.')
+    setSubmitting(true)
+    try {
+      await post(`/transfers/${task.t.id}/${task.mode}`, { items })
+      setToastType('success')
+      setToast(task.mode === 'pick' ? 'Items picked from source bins' : 'Items received into destination warehouse')
+      setTask(null)
+      load(meta.current_page)
+    } catch (e: unknown) {
+      setTaskErr((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Action failed')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const load = (p = 1) => {
     setLoading(true)
@@ -86,6 +119,7 @@ export default function Transfers() {
   const act = async (id: number, action: string) => {
     try {
       await post(`/transfers/${id}/${action}`)
+      setToastType('success')
       setToast(`Transfer ${action.replace('-', ' ')} successful`)
       load(meta.current_page)
     } catch (e: unknown) {
@@ -152,6 +186,35 @@ export default function Transfers() {
         </div>
       </Modal>
 
+      <Modal open={!!task} onClose={() => setTask(null)} title={task ? `${task.mode === 'pick' ? 'Pick' : 'Receive'} · ${task.t.number}` : ''}>
+        {taskErr && <ErrorBanner message={taskErr} />}
+        <p className="text-xs text-ink-muted mb-3">
+          {task?.mode === 'pick'
+            ? `Stock is taken from the bins holding it in ${task?.t.source_warehouse?.name ?? 'the source warehouse'} (largest first).`
+            : `Received stock lands in the staging area of ${task?.t.destination_warehouse?.name ?? 'the destination'} — create a putaway batch to shelve it.`}
+        </p>
+        <div className="space-y-2 mb-4">
+          {task?.t.items?.map((i) => {
+            const left = task.mode === 'pick' ? Number(i.quantity) - Number(i.picked_quantity) : Number(i.picked_quantity) - Number(i.received_quantity)
+            return (
+              <div key={i.id} className="flex items-center gap-3 border border-border rounded-lg px-3 py-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-ink truncate">{i.product?.name ?? `Product #${i.product_id}`}</p>
+                  <p className="text-[11px] text-ink-muted font-mono">{i.product?.sku} · {left} remaining</p>
+                </div>
+                <input type="number" min="0" max={left} value={taskQty[i.id] ?? '0'} disabled={left <= 0}
+                  onChange={(e) => setTaskQty({ ...taskQty, [i.id]: e.target.value })}
+                  className="w-24 border border-border rounded-lg px-2 py-1.5 text-sm text-right" aria-label="Quantity" />
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setTask(null)}>Cancel</Button>
+          <Button onClick={submitTask} disabled={submitting}>{submitting ? 'Saving…' : task?.mode === 'pick' ? 'Confirm pick' : 'Confirm receipt'}</Button>
+        </div>
+      </Modal>
+
       <Card>
         {loading ? (
           <TableSkeleton cols={7} />
@@ -172,9 +235,14 @@ export default function Transfers() {
                     {t.status === 'draft' && <Button size="sm" variant="secondary" onClick={() => act(t.id, 'submit')}>Submit</Button>}
                     {t.status === 'requested' && <Button size="sm" onClick={() => act(t.id, 'approve')}>Approve</Button>}
                     {t.status === 'approved' && <Button size="sm" variant="secondary" onClick={() => act(t.id, 'start-picking')}>Start Pick</Button>}
-                    {t.status === 'picking' && <Button size="sm" onClick={() => act(t.id, 'ship')}>Ship</Button>}
-                    {t.status === 'in_transit' && <Button size="sm" onClick={() => act(t.id, 'receive')}>Receive</Button>}
-                    {['draft', 'requested'].includes(t.status) && <Button size="sm" variant="danger" onClick={() => setCancelTarget({ id: t.id, number: t.number })}>Cancel</Button>}
+                    {t.status === 'picking' && (t.items ?? []).some((i) => Number(i.picked_quantity) < Number(i.quantity)) && (
+                      <Button size="sm" variant="secondary" onClick={() => openTask(t, 'pick')}>Pick</Button>
+                    )}
+                    {t.status === 'picking' && (t.items ?? []).every((i) => Number(i.picked_quantity) >= Number(i.quantity)) && (
+                      <Button size="sm" onClick={() => act(t.id, 'ship')}>Dispatch</Button>
+                    )}
+                    {['in_transit', 'partially_received'].includes(t.status) && <Button size="sm" onClick={() => openTask(t, 'receive')}>Receive</Button>}
+                    {['draft', 'requested', 'approved', 'picking'].includes(t.status) && <Button size="sm" variant="danger" onClick={() => setCancelTarget({ id: t.id, number: t.number })}>Cancel</Button>}
                   </div>
                 </td>
               </tr>

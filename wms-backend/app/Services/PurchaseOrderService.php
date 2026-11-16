@@ -178,8 +178,8 @@ class PurchaseOrderService
 
      public function cancel(PurchaseOrder $po): PurchaseOrder
      {
-        if (in_array($po->status, [self::STATUS_RECEIVED, self::STATUS_CANCELLED])) {
-            throw new InvalidArgumentException('Cannot cancel a received or already cancelled PO.');
+        if (in_array($po->status, [self::STATUS_RECEIVED, self::STATUS_PARTIALLY_RECEIVED, self::STATUS_CANCELLED])) {
+            throw new InvalidArgumentException('Cannot cancel a PO that has been (partially) received or already cancelled.');
         }
 
         $po->update(['status' => self::STATUS_CANCELLED]);
@@ -188,6 +188,6 @@ class PurchaseOrderService
 
     private function generateNumber(): string
     {
-        return 'PO-' . now()->format('Ymd') . '-' . str_pad((string) (PurchaseOrder::max('id') + 1), 5, '0', STR_PAD_LEFT);
+        return 'PO-' . now()->format('Ymd') . '-' . str_pad((string) ((int) PurchaseOrder::max('id') + 1), 5, '0', STR_PAD_LEFT);
     }
 }

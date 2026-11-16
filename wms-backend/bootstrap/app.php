@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(append: [
             \App\Http\Middleware\ForceJsonResponse::class,
+            \App\Http\Middleware\AuditTrail::class,
         ]);
 
         $middleware->alias([
@@ -61,7 +62,11 @@ return Application::configure(basePath: dirname(__DIR__))
             } elseif ($e instanceof HttpException) {
                 $status = $e->getStatusCode();
                 $message = $e->getMessage() ?: 'Request failed.';
-            } elseif ($e instanceof \Illuminate\Database\QueryException && $e->getCode() === '23000') {
+            } elseif ($e instanceof \InvalidArgumentException) {
+                // Business-rule violations raised by the domain services.
+                $status = 422;
+                $message = $e->getMessage();
+            } elseif ($e instanceof \Illuminate\Database\QueryException && in_array((string) $e->getCode(), ['23000', '23505'], true)) {
                 $status = 409;
                 $message = 'Conflict or duplicate entry.';
             }

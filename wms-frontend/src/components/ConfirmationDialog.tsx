@@ -24,14 +24,19 @@ export default function ConfirmationDialog({
   onCancel,
 }: Props) {
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!open) return null
 
   const handleConfirm = async () => {
     setSubmitting(true)
+    setError(null)
     try {
       await onConfirm()
       onCancel()
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string }
+      setError(err?.response?.data?.message || err?.message || 'Action failed')
     } finally {
       setSubmitting(false)
     }
@@ -51,10 +56,11 @@ export default function ConfirmationDialog({
           <div>
             <h3 className="text-lg font-bold text-ink leading-tight">{title}</h3>
             <p className="text-sm text-ink-muted mt-1 leading-relaxed">{message}</p>
+            {error && <p className="text-sm text-red font-medium mt-2">{error}</p>}
           </div>
         </div>
         <div className="flex justify-end gap-2 px-6 py-4 bg-surface-subtle/50 border-t border-border">
-          <Button variant="secondary" size="md" onClick={onCancel} disabled={submitting}>
+          <Button variant="secondary" size="md" onClick={() => { setError(null); onCancel() }} disabled={submitting}>
             {cancelLabel}
           </Button>
           <Button variant={variant === 'danger' ? 'danger' : 'primary'} size="md" onClick={handleConfirm} disabled={submitting}>

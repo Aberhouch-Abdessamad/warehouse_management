@@ -47,6 +47,6 @@ class InventoryBalance extends Model
 
     public function getAvailableQuantityAttribute(): float
     {
-        return $this->quantity_on_hand - $this->quantity_reserved - $this->quantity_damaged;
+        return (float) $this->quantity_on_hand - (float) $this->quantity_reserved;
     }
 }

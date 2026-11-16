@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
+import { ShieldAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
@@ -30,4 +31,19 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />
   return <>{children}</>
+}
+
+/** Blocks a page when the user lacks the permission (any of them, when an array). */
+export function RequirePermission({ permission, children }: { permission: string | string[]; children: ReactNode }) {
+  const { hasPermission } = useAuth()
+  const ok = Array.isArray(permission) ? permission.some(hasPermission) : hasPermission(permission)
+  if (ok) return <>{children}</>
+  return (
+    <div className="max-w-md mx-auto mt-20 text-center bg-surface border border-border rounded-xl p-8 shadow-panel">
+      <div className="w-12 h-12 mx-auto rounded-xl bg-amber-soft text-amber flex items-center justify-center mb-3"><ShieldAlert size={22} /></div>
+      <h1 className="text-lg font-bold text-ink">Access restricted</h1>
+      <p className="text-sm text-ink-muted mt-1">Your role does not include access to this area. Ask an administrator if you need it.</p>
+      <Link to="/dashboard" className="inline-block mt-4 text-sm font-semibold text-blue hover:underline">Back to dashboard</Link>
+    </div>
+  )
 }

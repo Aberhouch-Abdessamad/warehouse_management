@@ -30,7 +30,7 @@ class SalesOrderService
     {
         return DB::transaction(function () use ($data, $items, $userId) {
             $so = SalesOrder::create([
-                'number' => 'SO-' . now()->format('Ymd') . '-' . str_pad((string) (SalesOrder::max('id') + 1), 5, '0', STR_PAD_LEFT),
+                'number' => 'SO-' . now()->format('Ymd') . '-' . str_pad((string) ((int) SalesOrder::max('id') + 1), 5, '0', STR_PAD_LEFT),
                 'customer_id' => $data['customer_id'],
                 'warehouse_id' => $data['warehouse_id'],
                 'created_by' => $userId,
@@ -94,19 +94,25 @@ class SalesOrderService
 
             $this->reservationService->reserveForOrder($so);
 
+            // Generate the pick list straight away so the floor sees the task.
+            \App\Http\Controllers\Api\V1\Sales\PickingController::createPickListForOrder($so);
+
             return $so->fresh();
         });
     }
 
     public function cancel(SalesOrder $so, ?string $reason = null): SalesOrder
     {
-        if (! in_array($so->status, [self::STATUS_PENDING, self::STATUS_CONFIRMED, self::STATUS_PICKING])) {
-            throw new InvalidArgumentException('Only pending, confirmed, or picking orders can be cancelled.');
+        $cancellable = [self::STATUS_PENDING, self::STATUS_CONFIRMED, self::STATUS_PICKING, self::STATUS_PICKED, self::STATUS_PACKED];
+        if (! in_array($so->status, $cancellable, true)) {
+            throw new InvalidArgumentException('Orders that have already shipped cannot be cancelled.');
         }
 
         return DB::transaction(function () use ($so, $reason) {
-            if (in_array($so->status, [self::STATUS_CONFIRMED, self::STATUS_PICKING])) {
+            if ($so->status !== self::STATUS_PENDING) {
+                // Stock is only deducted at shipment, so releasing the reservation is enough.
                 $this->reservationService->releaseForOrder($so);
+                \App\Models\PickList::where('sales_order_id', $so->id)->update(['status' => 'cancelled']);
             }
 
             $so->update(['status' => self::STATUS_CANCELLED, 'notes' => $reason ?? $so->notes]);

@@ -44,6 +44,18 @@ class PackingController extends Controller
             return $this->error('Sales order must be picked before packing.', 422);
         }
 
+        // Packed quantities must match what was ordered (no product swaps / over-packing).
+        $ordered = $salesOrder->items()->get()->groupBy('product_id')->map(fn ($g) => (float) $g->sum('quantity'));
+        $packed = collect($request->input('items'))->groupBy('product_id')->map(fn ($g) => (float) $g->sum('quantity'));
+        foreach ($packed as $productId => $qty) {
+            if (! isset($ordered[$productId])) {
+                return $this->error('Package contains a product that is not on this order.', 422);
+            }
+            if ($qty > $ordered[$productId] + 1e-9) {
+                return $this->error('Packed quantity exceeds the ordered quantity.', 422);
+            }
+        }
+
         $package = DB::transaction(function () use ($request, $salesOrder) {
             $package = Package::create([
                 'number' => 'PKG-' . now()->format('Ymd') . '-' . str_pad((string) (Package::max('id') + 1), 5, '0', STR_PAD_LEFT),

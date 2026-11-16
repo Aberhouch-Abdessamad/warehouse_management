@@ -18,6 +18,7 @@ class TransferService
     public const STATUS_PICKED = 'picked';
     public const STATUS_IN_TRANSIT = 'in_transit';
     public const STATUS_RECEIVED = 'received';
+    public const STATUS_PARTIALLY_RECEIVED = 'partially_received';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
 
@@ -113,7 +114,7 @@ class TransferService
                     throw new InvalidArgumentException("Cannot pick more than remaining quantity for item {$item->id}.");
                 }
 
-                $this->inventoryService->move([
+                $this->inventoryService->moveOut([
                     'product_id' => $item->product_id,
                     'product_variant_id' => $item->product_variant_id,
                     'warehouse_id' => $transfer->source_warehouse_id,
@@ -127,7 +128,7 @@ class TransferService
                 ]);
 
                 $item->increment('picked_quantity', $qty);
-                $item->update(['status' => self::STATUS_PICKED]);
+                $item->update(['status' => (float) $item->picked_quantity >= (float) $item->quantity ? self::STATUS_PICKED : self::STATUS_PICKING]);
             }
 
             return $transfer->fresh('items');
@@ -152,7 +153,7 @@ class TransferService
     public function receive(Transfer $transfer, array $receipts, int $userId): Transfer
     {
         return DB::transaction(function () use ($transfer, $receipts, $userId) {
-            if ($transfer->status !== self::STATUS_IN_TRANSIT) {
+            if (! in_array($transfer->status, [self::STATUS_IN_TRANSIT, self::STATUS_PARTIALLY_RECEIVED], true)) {
                 throw new InvalidArgumentException('Only in-transit transfers can be received.');
             }
 

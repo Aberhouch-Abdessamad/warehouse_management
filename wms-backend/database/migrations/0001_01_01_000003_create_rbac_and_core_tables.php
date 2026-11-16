@@ -62,15 +62,11 @@ return new class extends Migration
 
         Schema::create('notifications', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('type', 100)->index();
-            $table->string('title');
-            $table->text('body')->nullable();
-            $table->json('data')->nullable();
+            $table->string('type');
+            $table->morphs('notifiable');
+            $table->text('data');
             $table->timestamp('read_at')->nullable()->index();
             $table->timestamps();
-
-            $table->index(['user_id', 'read_at']);
         });
     }
 

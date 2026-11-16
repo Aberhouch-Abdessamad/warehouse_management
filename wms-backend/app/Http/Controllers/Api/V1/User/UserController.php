@@ -10,6 +10,25 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    /**
+     * Only super admins may grant the super_admin role or manage other super admins.
+     */
+    private function guardEscalation(Request $request, ?User $target = null): ?\Illuminate\Http\JsonResponse
+    {
+        $actor = $request->user();
+        if ($actor->hasRole('super_admin')) {
+            return null;
+        }
+        $superRoleId = \App\Models\Role::where('name', 'super_admin')->value('id');
+        if ($superRoleId && in_array($superRoleId, array_map('intval', (array) $request->input('role_ids', [])), true)) {
+            return $this->errorResponse('Only a super administrator can grant the super administrator role.', 403);
+        }
+        if ($target && $target->hasRole('super_admin')) {
+            return $this->errorResponse('Only a super administrator can modify another super administrator.', 403);
+        }
+        return null;
+    }
+
     public function index(Request $request)
     {
         $query = User::with('roles');
@@ -79,7 +98,16 @@ class UserController extends Controller
             'warehouse_ids.*' => 'exists:warehouses,id',
         ]);
 
+        if ($deny = $this->guardEscalation($request, $user)) {
+            return $deny;
+        }
+        if ($request->user()->id === $user->id && $request->has('is_active') && ! $request->boolean('is_active')) {
+            return $this->errorResponse('You cannot deactivate your own account.', 422);
+        }
         $user->update($request->only(['name', 'email', 'phone', 'is_active']));
+        if ($request->has('is_active') && ! $request->boolean('is_active')) {
+            $user->tokens()->delete();
+        }
 
         if ($request->has('role_ids')) {
             $user->roles()->sync($request->input('role_ids'));
@@ -91,8 +119,11 @@ class UserController extends Controller
         return $this->success($user->fresh('roles', 'warehouses'), 'User updated.');
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
+        if ($deny = $this->guardEscalation($request, $user)) {
+            return $deny;
+        }
         if ($user->is_active) {
             return response()->json([
                 'success' => false,
@@ -107,9 +138,16 @@ class UserController extends Controller
         return $this->success(null, 'User deleted.');
     }
 
-    public function deactivate(User $user)
+    public function deactivate(Request $request, User $user)
     {
+        if ($request->user()->id === $user->id) {
+            return $this->errorResponse('You cannot deactivate your own account.', 422);
+        }
+        if ($deny = $this->guardEscalation($request, $user)) {
+            return $deny;
+        }
         $user->update(['is_active' => false]);
+        $user->tokens()->delete();
         return $this->success($user->fresh(), 'User deactivated.');
     }
 
@@ -124,6 +162,9 @@ class UserController extends Controller
         $request->validate([
             'new_password' => 'required|string|min:8',
         ]);
+        if ($deny = $this->guardEscalation($request, $user)) {
+            return $deny;
+        }
 
         $user->update(['password' => Hash::make($request->new_password)]);
         $user->tokens()->delete();

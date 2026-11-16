@@ -17,22 +17,26 @@ class SalesOrderController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesOrder::with(['customer', 'warehouse', 'createdBy']);
+        $query = SalesOrder::with(['customer', 'warehouse', 'createdBy', 'items.product']);
 
         if ($status = $request->input('status')) {
-            $query->where('status', $status);
+            $query->whereIn('status', explode(',', $status));
+        }
+        if ($warehouseId = $request->input('warehouse_id')) {
+            $query->where('warehouse_id', $warehouseId);
         }
         if ($customerId = $request->input('customer_id')) {
             $query->where('customer_id', $customerId);
         }
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('number', 'like', "%{$search}%");
+                $q->where('number', 'like', "%{$search}%")
+                  ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"));
             });
         }
 
         $perPage = min((int) $request->input('per_page', 15), 100);
-        return $this->paginated($query->orderByDesc('order_date')->paginate($perPage));
+        return $this->paginated($query->orderByDesc('order_date')->orderByDesc('id')->paginate($perPage));
     }
 
     public function store(Request $request)

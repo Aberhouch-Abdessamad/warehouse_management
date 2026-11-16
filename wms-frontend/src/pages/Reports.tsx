@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../api'
 import { get, getList } from '../services/apiClient'
 import { Card, Table, TableSkeleton, ErrorBanner, EmptyState, Button, PageHeader, Select, Input, Badge } from '../components/ui'
 import { BarChart3, Download } from 'lucide-react'
@@ -80,9 +81,9 @@ export default function Reports() {
       if (warehouseId) params.set('warehouse_id', warehouseId)
       if (fromDate) params.set('from_date', fromDate)
       if (toDate) params.set('to_date', toDate)
-      const res = await fetch(`/api/v1/reports/export?${params.toString()}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } })
-      if (!res.ok) throw new Error('Export failed')
-      const blob = await res.blob()
+      const res = await api.get(`/reports/export?${params.toString()}`, { responseType: 'blob', headers: { Accept: 'text/csv' } })
+      if (res.status === 204) throw new Error('No data to export for these filters.')
+      const blob = res.data as Blob
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -93,6 +94,8 @@ export default function Reports() {
       setError((e as Error).message || 'Export failed')
     }
   }
+
+  useEffect(() => { loadWarehouses() }, [])
 
   const headers = getHeaderFor(type)
 
@@ -114,7 +117,7 @@ export default function Reports() {
             <Select
               label="Report Type"
               value={type}
-              onChange={(v) => setType(v as ReportType)}
+              onChange={(v) => { setType(v as ReportType); setRows([]); setLoadedOnce(false) }}
               options={REPORT_TYPES}
             />
           </div>
@@ -139,9 +142,6 @@ export default function Reports() {
           <Button size="md" onClick={runReport} disabled={loading}>
             <BarChart3 size={15} /> {loading ? 'Running…' : 'Generate'}
           </Button>
-          {warehouses.length === 0 && (
-            <button type="button" onClick={loadWarehouses} className="text-xs text-blue underline">Load warehouses</button>
-          )}
         </div>
 
         {error && <div className="px-5 pb-4"><ErrorBanner message={error} /></div>}
@@ -175,9 +175,6 @@ export default function Reports() {
         )}
       </Card>
 
-      <p className="text-xs text-ink-muted px-1">
-        Tip: Reports such as <Badge status="closed">sales</Badge> show status color-coded columns.
-      </p>
     </div>
   )
 }

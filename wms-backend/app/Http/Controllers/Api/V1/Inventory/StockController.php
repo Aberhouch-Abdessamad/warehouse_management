@@ -43,8 +43,26 @@ class StockController extends Controller
             $query->whereRaw('inventory_balances.quantity_on_hand <= products.reorder_level');
         }
 
+        if (! $request->boolean('include_empty')) {
+            $query->where(fn ($q) => $q->where('inventory_balances.quantity_on_hand', '>', 0)
+                ->orWhere('inventory_balances.quantity_reserved', '>', 0)
+                ->orWhere('inventory_balances.quantity_damaged', '>', 0));
+        }
+
+        if ($binId = $request->input('bin_id')) {
+            $query->where('inventory_balances.bin_id', $binId);
+        }
+
+        $query->addSelect('products.reorder_level', 'products.cost_price');
+
         $perPage = min((int) $request->input('per_page', 15), 100);
-        $balances = $query->orderBy('products.sku')->paginate($perPage);
+        $balances = $query->orderBy('products.sku')->orderBy('warehouses.code')->orderBy('inventory_balances.bin_id')->paginate($perPage);
+
+        // Human-readable location path (zone / aisle / rack / shelf / bin)
+        $bins = Bin::with('shelf.rack.aisle.zone')->whereIn('id', collect($balances->items())->pluck('bin_id')->filter())->get()->keyBy('id');
+        foreach ($balances->items() as $row) {
+            $row->setAttribute('location', $row->bin_id && isset($bins[$row->bin_id]) ? $bins[$row->bin_id]->full_code : 'STAGING');
+        }
 
         return $this->paginated($balances);
     }

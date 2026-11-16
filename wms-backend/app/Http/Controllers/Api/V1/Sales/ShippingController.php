@@ -21,7 +21,7 @@ class ShippingController extends Controller
 
     public function index(Request $request)
     {
-        $query = Shipment::with(['salesOrder.customer', 'warehouse']);
+        $query = Shipment::with(['salesOrder.customer', 'warehouse', 'items.product']);
 
         if ($status = $request->input('status')) {
             $query->where('status', $status);
@@ -74,6 +74,7 @@ class ShippingController extends Controller
             }
             $this->reservationService->fulfillForOrder($salesOrder);
             $salesOrder->update(['status' => 'shipped']);
+            Package::where('sales_order_id', $salesOrder->id)->update(['status' => 'shipped']);
 
             return $shipment;
         });

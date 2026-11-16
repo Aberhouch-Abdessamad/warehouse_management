@@ -30,7 +30,8 @@ class LocationController extends Controller
             'aisle' => Aisle::with('zone')->when($warehouseId, fn($q) => $q->whereHas('zone', fn($z) => $z->where('warehouse_id', $warehouseId)))->get(),
             'rack' => Rack::with('aisle.zone')->when($warehouseId, fn($q) => $q->whereHas('aisle.zone', fn($z) => $z->where('warehouse_id', $warehouseId)))->get(),
             'shelf' => Shelf::with('rack.aisle.zone')->when($warehouseId, fn($q) => $q->whereHas('rack.aisle.zone', fn($z) => $z->where('warehouse_id', $warehouseId)))->get(),
-            'bin' => Bin::with('shelf.rack.aisle.zone')->when($warehouseId, fn($q) => $q->whereHas('shelf.rack.aisle.zone', fn($z) => $z->where('warehouse_id', $warehouseId)))->get(),
+            'bin' => Bin::with('shelf.rack.aisle.zone')->when($warehouseId, fn($q) => $q->whereHas('shelf.rack.aisle.zone', fn($z) => $z->where('warehouse_id', $warehouseId)))->get()
+                ->each(fn ($b) => $b->setAttribute('full_code', $b->full_code)),
         };
 
         return $this->success($data);
@@ -106,6 +107,22 @@ class LocationController extends Controller
     public function destroy(string $location)
     {
         $model = $this->resolveModel($location);
+
+        if ($model instanceof Bin && \App\Models\InventoryBalance::where('bin_id', $model->id)
+                ->where(fn ($q) => $q->where('quantity_on_hand', '>', 0)->orWhere('quantity_damaged', '>', 0))->exists()) {
+            return $this->errorResponse('This bin still holds stock. Move the stock out before deleting it.', 409);
+        }
+        $childCount = match (true) {
+            $model instanceof Zone => $model->aisles()->count(),
+            $model instanceof Aisle => $model->racks()->count(),
+            $model instanceof Rack => $model->shelves()->count(),
+            $model instanceof Shelf => $model->bins()->count(),
+            default => 0,
+        };
+        if ($childCount > 0) {
+            return $this->errorResponse('Delete the child locations first.', 409);
+        }
+
         $model->delete();
 
         return $this->success(null, 'Location deleted.');

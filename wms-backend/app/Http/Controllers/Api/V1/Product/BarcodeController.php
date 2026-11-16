@@ -6,70 +6,38 @@ use App\Http\Controllers\Api\V1\Controller;
 use App\Models\Product;
 use App\Models\ProductBarcode;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class BarcodeController extends Controller
 {
-    public function index(Request $request)
+    public function index(Product $product)
     {
-        $query = ProductBarcode::with('product');
-        if ($sku = $request->input('sku')) {
-            $query->whereHas('product', fn($q) => $q->where('sku', $sku));
-        }
-        if ($productId = $request->input('product_id')) {
-            $query->where('product_id', $productId);
-        }
-
-        $barcodes = $query->get();
-
-        return $this->success($barcodes);
+        return $this->success(ProductBarcode::where('product_id', $product->id)->get());
     }
 
-    public function store(Request $request)
+    public function store(Request $request, Product $product)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'barcode' => 'required|string|max:35',
-            'type' => 'nullable|in:none,gtin12,gtin13,gtin14,ean13,ean8,upc_a,isbn,issn,upc_e',
+        $validated = $request->validate([
+            'barcode' => 'required|string|max:35|unique:product_barcodes,barcode',
+            'type' => 'nullable|in:none,gtin12,gtin13,gtin14,ean13,ean8,upc_a,isbn,issn,upc_e,code128,qr',
         ]);
-
-        $existing = ProductBarcode::where('product_id', $request->product_id)
-            ->where('barcode', $request->barcode)
-            ->exists();
-
-        if ($existing) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Barcode already assigned to this product.',
-                'errors' => (object) [],
-                'data' => null,
-                'meta' => [],
-            ], 422);
-        }
 
         $barcode = ProductBarcode::create([
-            'product_id' => $request->product_id,
-            'barcode' => $request->barcode,
-            'type' => $request->input('type', 'gtin13'),
+            'product_id' => $product->id,
+            'barcode' => $validated['barcode'],
+            'type' => $validated['type'] ?? 'gtin13',
         ]);
 
-        return $this->success($barcode, 'Barcode assigned.');
+        return $this->success($barcode, 'Barcode assigned.', [], 201);
     }
 
-    public function update(Request $request, ProductBarcode $item)
+    public function destroy(Product $product, ProductBarcode $barcode)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'barcode' => 'required|max:35',
-        ]);
+        if ((int) $barcode->product_id !== (int) $product->id) {
+            return $this->errorResponse('Barcode does not belong to this product.', 404);
+        }
 
-        $item->update($request->only(['product_id', 'barcode', 'type']));
-        return $this->success($item->fresh(), 'Barcode updated.');
-    }
+        $barcode->delete();
 
-    public function destroy(ProductBarcode $item)
-    {
-        $item->delete();
         return $this->success(null, 'Barcode deleted.');
     }
 }

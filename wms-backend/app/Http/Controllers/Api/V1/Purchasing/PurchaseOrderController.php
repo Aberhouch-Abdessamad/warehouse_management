@@ -17,22 +17,26 @@ class PurchaseOrderController extends Controller
 
     public function index(Request $request)
     {
-        $query = PurchaseOrder::with(['supplier', 'warehouse', 'createdBy']);
+        $query = PurchaseOrder::with(['supplier', 'warehouse', 'createdBy', 'items.product']);
 
         if ($status = $request->input('status')) {
-            $query->where('status', $status);
+            $query->whereIn('status', explode(',', $status));
+        }
+        if ($warehouseId = $request->input('warehouse_id')) {
+            $query->where('warehouse_id', $warehouseId);
         }
         if ($supplierId = $request->input('supplier_id')) {
             $query->where('supplier_id', $supplierId);
         }
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('number', 'like', "%{$search}%");
+                $q->where('number', 'like', "%{$search}%")
+                  ->orWhereHas('supplier', fn ($c) => $c->where('name', 'like', "%{$search}%"));
             });
         }
 
         $perPage = min((int) $request->input('per_page', 15), 100);
-        return $this->paginated($query->orderByDesc('order_date')->paginate($perPage));
+        return $this->paginated($query->orderByDesc('order_date')->orderByDesc('id')->paginate($perPage));
     }
 
     public function store(Request $request)
@@ -112,6 +116,17 @@ class PurchaseOrderController extends Controller
         }
 
         return $this->success($po, 'Purchase order approved.');
+    }
+
+    public function cancel(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        try {
+            $po = $this->purchaseOrderService->cancel($purchaseOrder);
+        } catch (InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success($po, 'Purchase order cancelled.');
     }
 
     public function receive(Request $request, PurchaseOrder $purchaseOrder)

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PickListItem;
 use App\Models\Reservation;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
@@ -102,9 +103,9 @@ class ReservationService
                 ->lockForUpdate()
                 ->get();
 
+            // 1) Release the warehouse-level reservation so the stock_out
+            //    availability check does not count this order's own commitment.
             foreach ($reservations as $reservation) {
-                // Release the reservation first so the availability check for
-                // stock_out does not count this order's own committed stock.
                 $this->inventoryService->move([
                     'product_id' => $reservation->product_id,
                     'product_variant_id' => $reservation->product_variant_id,
@@ -117,21 +118,31 @@ class ReservationService
                     'reason' => 'Reservation resolved on shipment',
                 ]);
 
-                $this->inventoryService->move([
-                    'product_id' => $reservation->product_id,
-                    'product_variant_id' => $reservation->product_variant_id,
-                    'warehouse_id' => $reservation->warehouse_id,
-                    'quantity' => (float) $reservation->quantity,
+                $reservation->update([
+                    'status' => 'fulfilled',
+                    'released_at' => now(),
+                ]);
+            }
+
+            // 2) Deduct physical stock from the bins the picker used
+            //    (falls back to automatic bin allocation).
+            $pickBins = PickListItem::whereHas('pickList', fn ($q) => $q->where('sales_order_id', $order->id))
+                ->get()
+                ->keyBy(fn ($i) => $i->product_id . ':' . ($i->product_variant_id ?? ''));
+
+            foreach ($order->items()->get() as $item) {
+                $key = $item->product_id . ':' . ($item->product_variant_id ?? '');
+                $this->inventoryService->moveOut([
+                    'product_id' => $item->product_id,
+                    'product_variant_id' => $item->product_variant_id,
+                    'warehouse_id' => $order->warehouse_id,
+                    'preferred_bin_id' => $pickBins[$key]->bin_id ?? null,
+                    'quantity' => (float) $item->quantity,
                     'movement_type' => 'stock_out',
                     'reference_type' => 'sales_order',
                     'reference_id' => $order->id,
                     'user_id' => auth()->id(),
-                    'reason' => 'Stock out on shipment',
-                ]);
-
-                $reservation->update([
-                    'status' => 'fulfilled',
-                    'released_at' => now(),
+                    'reason' => 'Stock out on shipment ' . $order->number,
                 ]);
             }
         });

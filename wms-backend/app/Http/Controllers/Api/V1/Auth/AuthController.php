@@ -25,6 +25,14 @@ class AuthController extends Controller
             ]);
         }
 
+        if (! $user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => ['This account has been deactivated. Contact your administrator.'],
+            ]);
+        }
+
+        $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip()])->save();
+
         // Revoke previous tokens/devices
         $user->tokens()->delete();
 
@@ -51,16 +59,26 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
+        $user = $request->user();
+
         return response()->json([
             'success' => true,
             'message' => 'User details',
-            'data' => $request->user(),
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_active' => $user->is_active,
+                'roles' => $user->roles()->pluck('roles.name')->toArray(),
+                'permissions' => $user->getAllPermissions()->values()->toArray(),
+            ],
+            'meta' => [],
         ]);
     }
 
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
+        $request->user()->currentAccessToken()?->delete();
 
         return response()->json([
             'success' => true,

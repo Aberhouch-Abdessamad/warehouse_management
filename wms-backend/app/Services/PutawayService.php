@@ -18,6 +18,12 @@ class PutawayService
     public function createBatch(array $data, int $userId): PutawayBatch
     {
         return DB::transaction(function () use ($data, $userId) {
+            foreach ($data['items'] as $item) {
+                $bin = \App\Models\Bin::with('shelf.rack.aisle.zone')->find($item['destination_bin_id']);
+                if (! $bin || (int) $bin->shelf?->rack?->aisle?->zone?->warehouse_id !== (int) $data['warehouse_id']) {
+                    throw new InvalidArgumentException('Destination bin does not belong to the selected warehouse.');
+                }
+            }
             $batch = PutawayBatch::create([
                 'number' => 'PUA-' . now()->format('Ymd') . '-' . str_pad((string) (PutawayBatch::max('id') + 1), 5, '0', STR_PAD_LEFT),
                 'goods_receipt_id' => $data['goods_receipt_id'] ?? null,
@@ -45,8 +51,8 @@ class PutawayService
 
     public function executePutaway(PutawayBatch $batch, array $items, int $userId): PutawayBatch
     {
-        if ($batch->status !== 'pending') {
-            throw new InvalidArgumentException('Batch must be pending to execute putaway.');
+        if (! in_array($batch->status, ['pending', 'in_progress'], true)) {
+            throw new InvalidArgumentException('Only pending or in-progress batches can be executed.');
         }
 
         return DB::transaction(function () use ($batch, $items, $userId) {
@@ -70,13 +76,14 @@ class PutawayService
                     );
                 }
 
-                $putawayItem->increment('putaway_quantity', $qty);
+                $putawayItem->putaway_quantity = (float) $putawayItem->putaway_quantity + $qty;
                 $putawayItem->update([
                     'status' => $putawayItem->putaway_quantity >= $putawayItem->quantity ? 'completed' : 'in_progress',
                     'putaway_at' => now(),
                 ]);
 
-                if ($putawayItem->source_bin_id && $putawayItem->destination_bin_id) {
+                // Source bin null = receiving dock / staging area.
+                if ((int) $putawayItem->source_bin_id !== (int) $putawayItem->destination_bin_id) {
                     $this->inventoryService->transfer([
                         'product_id' => $putawayItem->product_id,
                         'product_variant_id' => $putawayItem->product_variant_id,

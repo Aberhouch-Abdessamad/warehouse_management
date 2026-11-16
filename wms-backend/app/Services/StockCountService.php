@@ -90,7 +90,7 @@ class StockCountService
     {
         $count = $this->find($id);
 
-        if ($count->status !== 'open') {
+        if (! in_array($count->status, ['open', 'counted'], true)) {
             throw new InvalidArgumentException('Only open stock counts can be recorded.');
         }
 
@@ -136,17 +136,46 @@ class StockCountService
 
         return DB::transaction(function () use ($count, $userId) {
             foreach ($count->items()->get() as $item) {
-                $system = (float) $item->system_quantity;
-                $counted = $item->counted_quantity !== null
-                    ? (float) $item->counted_quantity
-                    : $system;
+                if ($item->counted_quantity === null) {
+                    continue; // not counted -> leave untouched
+                }
+                // Compare with the live balance so movements made while the
+                // count was open are not double-counted.
+                $system = $this->systemQuantity(
+                    (int) $item->product_id,
+                    null,
+                    (int) $count->warehouse_id,
+                    $item->bin_id
+                );
+                $counted = (float) $item->counted_quantity;
                 $variance = $counted - $system;
 
                 if (abs($variance) < 0.0001) {
                     continue;
                 }
 
+                if ($item->bin_id === null && $variance < 0) {
+                    // Warehouse-level count: take the shortage out of the bins that hold stock.
+                    foreach ($this->inventoryService->allocate((int) $item->product_id, null, (int) $count->warehouse_id, abs($variance)) as [$binId, $qty]) {
+                        $this->inventoryService->move([
+                            'allow_negative' => true,
+                            'product_id' => $item->product_id,
+                            'warehouse_id' => $count->warehouse_id,
+                            'bin_id' => $binId,
+                            'quantity' => $qty,
+                            'signed_quantity' => -$qty,
+                            'movement_type' => 'adjustment',
+                            'reference_type' => StockCount::class,
+                            'reference_id' => $count->id,
+                            'user_id' => $userId,
+                            'reason' => "Stock count {$count->number}",
+                        ]);
+                    }
+                    continue;
+                }
+
                 $this->inventoryService->move([
+                    'allow_negative' => true, // physical count is the source of truth
                     'product_id' => $item->product_id,
                     'warehouse_id' => $count->warehouse_id,
                     'bin_id' => $item->bin_id,
@@ -174,8 +203,8 @@ class StockCountService
     {
         $count = $this->find($id);
 
-        if ($count->status !== 'open') {
-            throw new InvalidArgumentException('Only open stock counts can be deleted.');
+        if (! in_array($count->status, ['open', 'counted'], true)) {
+            throw new InvalidArgumentException('Applied stock counts cannot be deleted.');
         }
 
         $count->items()->delete();
@@ -184,10 +213,11 @@ class StockCountService
 
     private function systemQuantity(int $productId, ?int $variantId, int $warehouseId, ?int $binId): float
     {
+        // bin_id null = whole-warehouse count (sum across all bins)
         $sum = InventoryBalance::where('product_id', $productId)
             ->where('product_variant_id', $variantId)
             ->where('warehouse_id', $warehouseId)
-            ->where('bin_id', $binId)
+            ->when($binId !== null, fn ($q) => $q->where('bin_id', $binId))
             ->sum('quantity_on_hand');
 
         return (float) $sum;

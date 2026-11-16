@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { get, getList, post } from '../services/apiClient'
 import { Card, Badge, Table, Spinner, ErrorBanner, EmptyState, Button, Select, PageHeader, Pagination, Modal } from '../components/ui'
 import ConfirmationDialog from '../components/ConfirmationDialog'
@@ -22,6 +23,7 @@ interface Ref {
 }
 
 export default function Sales() {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState<SalesOrder[]>([])
   const [meta, setMeta] = useState({ total: 0, current_page: 1, last_page: 1 })
   const [statusFilter, setStatusFilter] = useState('')
@@ -177,14 +179,20 @@ export default function Sales() {
                     {so.status === 'pending' && (
                       <Button size="sm" onClick={() => act(so.id, 'confirm')}>Confirm</Button>
                     )}
-                    {so.status === 'confirmed' && (
-                      <>
-                        <Button size="sm" variant="secondary" onClick={() => act(so.id, 'pick')}>Pick</Button>
-                        <Button size="sm" variant="danger" onClick={() => act(so.id, 'cancel')}>Cancel</Button>
-                      </>
+                    {['confirmed', 'picking'].includes(so.status) && (
+                      <Button size="sm" variant="secondary" onClick={() => navigate('/picking')}>Pick</Button>
+                    )}
+                    {so.status === 'picked' && (
+                      <Button size="sm" variant="secondary" onClick={() => navigate('/packing')}>Pack</Button>
                     )}
                     {so.status === 'packed' && (
-                      <Button size="sm" onClick={() => act(so.id, 'ship')}>Ship</Button>
+                      <Button size="sm" onClick={() => navigate('/shipping')}>Ship</Button>
+                    )}
+                    {['pending', 'confirmed', 'picking', 'picked', 'packed'].includes(so.status) && (
+                      <Button size="sm" variant="danger" onClick={() => setConfirm({
+                        id: so.id, action: 'cancel', title: 'Cancel sales order',
+                        message: `Cancel ${so.number}? Reserved stock will be released.`, danger: true, confirmLabel: 'Cancel order', variant: 'danger',
+                      })}>Cancel</Button>
                     )}
                     {so.status === 'shipped' && (
                       <Button size="sm" variant="secondary" onClick={() => act(so.id, 'mark-delivered')}>Delivered</Button>

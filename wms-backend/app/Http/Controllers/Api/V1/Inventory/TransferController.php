@@ -17,10 +17,10 @@ class TransferController extends Controller
 
     public function index(Request $request)
     {
-        $query = Transfer::with(['sourceWarehouse', 'destinationWarehouse', 'requester']);
+        $query = Transfer::with(['sourceWarehouse', 'destinationWarehouse', 'requester', 'items.product']);
 
         if ($status = $request->input('status')) {
-            $query->where('status', $status);
+            $query->whereIn('status', explode(',', $status));
         }
         if ($search = $request->input('search')) {
             $query->where('number', 'like', "%{$search}%");

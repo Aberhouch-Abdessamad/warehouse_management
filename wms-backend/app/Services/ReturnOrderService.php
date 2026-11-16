@@ -103,7 +103,7 @@ class ReturnOrderService
                         'warehouse_id' => $order->warehouse_id,
                         'bin_id' => null,
                         'quantity' => $qty,
-                        'movement_type' => 'damage',
+                        'movement_type' => 'return_damaged',
                         'reference_type' => ReturnOrder::class,
                         'reference_id' => $order->id,
                         'user_id' => $userId,

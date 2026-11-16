@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { get, getList, post } from '../services/apiClient'
 import { Card, Badge, Table, Spinner, ErrorBanner, EmptyState, Button, Select, PageHeader, Pagination, Modal } from '../components/ui'
 import ConfirmationDialog from '../components/ConfirmationDialog'
@@ -23,6 +24,7 @@ interface Ref {
 }
 
 export default function Purchasing() {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState<PurchaseOrder[]>([])
   const [meta, setMeta] = useState({ total: 0, current_page: 1, last_page: 1 })
   const [statusFilter, setStatusFilter] = useState('')
@@ -193,9 +195,9 @@ export default function Purchasing() {
                       <Button size="sm" onClick={() => act(po.id, 'approve')}>Approve</Button>
                     )}
                     {(po.status === 'approved' || po.status === 'partially_received') && (
-                      <Button size="sm" variant="secondary" onClick={() => act(po.id, 'receive')}>Receive All</Button>
+                      <Button size="sm" variant="secondary" onClick={() => navigate('/receiving')}>Receive</Button>
                     )}
-                    {['draft', 'submitted'].includes(po.status) && (
+                    {['draft', 'submitted', 'approved'].includes(po.status) && (
                       <Button size="sm" variant="danger" onClick={() => setConfirm({
                         id: po.id,
                         action: 'cancel',

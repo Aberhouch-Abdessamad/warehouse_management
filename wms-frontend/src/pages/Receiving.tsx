@@ -53,7 +53,7 @@ export default function Receiving() {
   useEffect(() => { load(1) }, [])
 
   const loadPOs = () => {
-    getList<PurchaseOrder>('/purchase-orders', { per_page: 100, status: 'approved' })
+    getList<PurchaseOrder>('/purchase-orders', { per_page: 100, status: 'approved,partially_received' })
       .then((resp) => setPOs(resp.data))
       .catch(() => {})
   }

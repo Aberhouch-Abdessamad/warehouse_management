@@ -8,6 +8,8 @@ interface PickItem {
   product_id: number
   product?: { id: number; name: string; sku: string }
   bin?: { id: number; code: string } | null
+  bin_id?: number | null
+  bin_stock?: { bin_id: number; code: string; on_hand: number }[]
   required_quantity: string
   picked_quantity: string
   status: string
@@ -40,6 +42,18 @@ export default function Picking() {
   const [active, setActive] = useState<SalesOrder | null>(null)
   const [pickList, setPickList] = useState<PickList | null>(null)
   const [pickedQty, setPickedQty] = useState<Record<number, string>>({})
+  const [pickBin, setPickBin] = useState<Record<number, string>>({})
+
+  const initFrom = (pl: PickList) => {
+    const q: Record<number, string> = {}
+    const b: Record<number, string> = {}
+    pl.items?.forEach((item) => {
+      q[item.id] = String(Math.max(0, Number(item.required_quantity) - Number(item.picked_quantity)))
+      b[item.id] = item.bin_id ? String(item.bin_id) : ''
+    })
+    setPickedQty(q)
+    setPickBin(b)
+  }
   const [submitting, setSubmitting] = useState(false)
   const [taskError, setTaskError] = useState<string | null>(null)
   const [taskSuccess, setTaskSuccess] = useState<string | null>(null)
@@ -48,7 +62,7 @@ export default function Picking() {
   const load = (page = 1) => {
     setLoading(true)
     setError(null)
-    getList<SalesOrder>('/sales-orders', { page, per_page: 15, status: 'confirmed' })
+    getList<SalesOrder>('/sales-orders', { page, per_page: 15, status: 'confirmed,picking' })
       .then((resp) => {
         setOrders(resp.data)
         setMeta({ total: resp.total, current_page: resp.current_page, last_page: resp.last_page })
@@ -66,9 +80,7 @@ export default function Picking() {
     try {
       const resp = await get<PickList>(`/picking/${so.id}`)
       setPickList(resp)
-      const init: Record<number, string> = {}
-      resp.items?.forEach((item) => { init[item.id] = item.picked_quantity ? String(item.picked_quantity) : '0' })
-      setPickedQty(init)
+      initFrom(resp)
     } catch (e: unknown) {
       setTaskError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load pick list')
       setActive(null)
@@ -85,15 +97,22 @@ export default function Picking() {
         .map((i) => ({
           pick_list_item_id: i.id,
           picked_quantity: Number(pickedQty[i.id]),
-          bin_id: i.bin?.id ?? null,
+          bin_id: pickBin[i.id] ? Number(pickBin[i.id]) : null,
         }))
       if (items.length === 0) {
         setTaskError('Enter at least one picked quantity.')
         setSubmitting(false)
         return
       }
-      await post(`/picking/${active.id}/pick`, { items })
-      setTaskSuccess('Picks recorded successfully.')
+      const updated = await post<PickList>(`/picking/${active.id}/pick`, { items })
+      if (updated?.status === 'completed') {
+        setToast(`${active.number} fully picked — ready for packing`)
+        setActive(null)
+        setPickList(null)
+        load(meta.current_page)
+        return
+      }
+      setTaskSuccess('Picks recorded. Remaining lines are still open.')
       setToast('Picks recorded successfully')
       await loadPickList(active.id)
     } catch (e: unknown) {
@@ -106,9 +125,7 @@ export default function Picking() {
   const loadPickList = async (soId: number) => {
     const resp = await get<PickList>(`/picking/${soId}`)
     setPickList(resp)
-    const init: Record<number, string> = {}
-    resp.items?.forEach((item) => { init[item.id] = String(item.picked_quantity ?? '0') })
-    setPickedQty(init)
+    initFrom(resp)
   }
 
   const complete = async () => {
@@ -131,7 +148,7 @@ export default function Picking() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Picking" subtitle="Execute pick tasks for confirmed sales orders." />
+      <PageHeader title="Picking" subtitle="Pick confirmed orders from their suggested bins. Stock leaves the bin when the order ships." />
 
       {error && <ErrorBanner message={error} onRetry={() => load(meta.current_page)} />}
 
@@ -181,12 +198,20 @@ export default function Picking() {
                         <p className="text-xs text-ink-muted font-mono">{item.product?.sku ?? '—'}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {item.bin && (
+                        {!isDone && (item.bin_stock?.length ?? 0) > 0 ? (
+                          <label className="inline-flex items-center gap-1 text-xs text-ink-muted">
+                            <MapPin size={12} />
+                            <select value={pickBin[item.id] ?? ''} onChange={(e) => setPickBin({ ...pickBin, [item.id]: e.target.value })}
+                              className="border border-border rounded-md px-1.5 py-1 text-xs text-ink bg-surface" aria-label="Pick from bin">
+                              {item.bin_stock!.map((b) => <option key={b.bin_id} value={b.bin_id}>{b.code} · {b.on_hand} on hand</option>)}
+                            </select>
+                          </label>
+                        ) : item.bin && (
                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink bg-surface-subtle px-2 py-1 rounded-md">
                             <MapPin size={12} /> {item.bin.code}
                           </span>
                         )}
-                        <span className="text-xs text-ink-muted">Req {req}</span>
+                        <span className="text-xs text-ink-muted tabular-nums">{done}/{req}</span>
                         <input
                           type="number"
                           min="0"
@@ -237,7 +262,7 @@ export default function Picking() {
                   <td className="px-4 py-3 text-ink-muted">{so.items?.length ?? '—'}</td>
                   <td className="px-4 py-3"><Badge status={so.status} /></td>
                   <td className="px-4 py-3 text-right">
-                    <Button size="sm" onClick={() => openTask(so)}>Start Picking</Button>
+                    <Button size="sm" onClick={() => openTask(so)}>{so.status === 'picking' ? 'Continue' : 'Start picking'}</Button>
                   </td>
                 </tr>
               ))}
