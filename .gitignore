@@ -1,0 +1,20 @@
+# Dependencies and build output (the frontend has no .gitignore of its own)
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local environment / secrets – the real .env with AI_* keys must never be committed
+.env
+.env.*
+!.env.example
+
+# Local database files (contain real users, password hashes, tokens and AI chats)
+*.sqlite
+*.sqlite-*
+*.db
+
+# Scratch files and local backups
+/_claude_tmp/
+
+# Logs
+*.log
